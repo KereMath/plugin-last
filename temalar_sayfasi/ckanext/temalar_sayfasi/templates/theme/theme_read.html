@@ -1,0 +1,54 @@
+{% extends "page.html" %}
+
+{# Sayfa başlığını dinamik olarak temanın adıyla ayarla #}
+{% block subtitle %}{{ c.theme_data.category.name }}{% endblock %}
+
+{% block primary_content %}
+  {# Senin istediğin gibi, gelecekteki "Düzenle" butonu için şimdiden yer ayıralım #}
+  {% if h.check_access('sysadmin') %}
+    <div style="position: fixed; bottom: 30px; right: 30px; z-index: 1100;">
+      <a href="#" class="btn btn-primary" style="width: 60px; height: 60px; border-radius: 50%; font-size: 24px; line-height: 1.5;">
+        <i class="fa fa-cog"></i>
+      </a>
+    </div>
+  {% endif %}
+
+  {# Tema başlığı ve açıklaması #}
+  <section class="module">
+    <div class="module-content">
+      <h1 class="page-heading">
+        {% if c.theme_data.category.icon %}
+          <i class="fa fa-{{ c.theme_data.category.icon }}" style="color:{{ c.theme_data.category.color }};"></i>
+        {% endif %}
+        {{ c.theme_data.category.name }}
+      </h1>
+      {% if c.theme_data.category.description %}
+        <p>{{ c.theme_data.category.description }}</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {# Veri seti listesi #}
+  <div class="module">
+    <div class="module-content">
+      <h3>{{ _('Bu Temadaki Veri Setleri') }} ({{ c.theme_data.datasets|length }})</h3>
+
+      {% if c.theme_data.datasets %}
+        <ul class="dataset-list">
+          {% for dataset in c.theme_data.datasets %}
+            <li class="dataset-item">
+              <h3 class="dataset-heading">
+                <a href="{{ h.url_for('dataset.read', id=dataset.name) }}">{{ dataset.title }}</a>
+              </h3>
+              <div class="dataset-snippet">
+                {{ h.markdown_extract(dataset.notes, extract_length=200) }}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">{{ _('Bu temada henüz veri seti bulunmamaktadır.') }}</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

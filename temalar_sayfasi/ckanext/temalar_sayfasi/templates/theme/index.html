@@ -11,10 +11,57 @@
     
     <div id="theme-grid" class="theme-grid">
       </div>
+      {# --- YENİ EKLENEN BUTON --- #}
+  {# Bu butonu sadece admin yetkisine sahip kullanıcılar görür #}
+  {% if h.check_access('sysadmin') %}
+    <a href="{{ h.url_for('temalar_sayfasi.new') }}" class="add-theme-fab" title="{{ _('Yeni Tema Ekle') }}">
+      <span class="fab-icon"><i class="fa fa-plus"></i></span>
+      <span class="fab-text">{{ _('Yeni Tema Ekle') }}</span>
+    </a>
+  {% endif %}
   </div>
 </div>
 
 <style>
+  /* Yeni Tema Ekle butonu için stiller */
+.add-theme-fab {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  position: fixed !important;
+  bottom: 30px !important;
+  right: 30px !important;
+  z-index: 1100 !important;
+  width: 62px !important;
+  height: 60px !important;
+  padding: 0 21px !important;
+  background: linear-gradient(45deg, #28a745, #218838) !important;
+  color: #fff !important;
+  border-radius: 30px !important;
+  box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3) !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55) !important;
+}
+.add-theme-fab:hover {
+  width: 240px !important;
+  box-shadow: 0 10px 25px rgba(40, 167, 69, 0.4) !important;
+}
+.add-theme-fab .fab-icon {
+  font-size: 22px !important;
+  line-height: 1 !important;
+}
+.add-theme-fab .fab-text {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  margin-left: 12px !important;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out 0.1s !important;
+}
+.add-theme-fab:hover .fab-text {
+  opacity: 1;
+}
   /* Ana Konteyner - Flexbox ile kartları yan yana dizer ve sığmazsa alt satıra atar */
   .theme-grid {
     display: flex;
@@ -168,7 +215,7 @@
                                     </div>
                                 </div>
                                 <div class="card-footer">
-                                    <a href="/dataset?theme=${category.slug}" class="btn-details">Detaylı İncele</a>
+                                    <a href="/temalar/${category.slug}" class="btn-details">Detaylı İncele</a>
                                 </div>
                             `;
                             
