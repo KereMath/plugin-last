@@ -7,9 +7,9 @@
   {# Senin istediğin gibi, gelecekteki "Düzenle" butonu için şimdiden yer ayıralım #}
   {% if h.check_access('sysadmin') %}
     <div style="position: fixed; bottom: 30px; right: 30px; z-index: 1100;">
-      <a href="#" class="btn btn-primary" style="width: 60px; height: 60px; border-radius: 50%; font-size: 24px; line-height: 1.5;">
-        <i class="fa fa-cog"></i>
-      </a>
+        <a href="{{ h.url_for('temalar_sayfasi.edit', slug=c.theme_data.category.slug) }}" class="btn btn-primary" title="{{ _('Temayı Düzenle') }}" style="width: 60px; height: 60px; border-radius: 50%; font-size: 24px; line-height: 1.5;">
+            <i class="fa fa-cog"></i>
+        </a>
     </div>
   {% endif %}
 
