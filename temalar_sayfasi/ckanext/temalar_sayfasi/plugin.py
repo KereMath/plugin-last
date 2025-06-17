@@ -112,9 +112,27 @@ def edit_theme(slug):
         tk.abort(500, tk._(f"Sayfa yüklenirken bir hata oluştu: {e}"))
 
 
-
-
-
+# --- YENİ EKLENEN FONKSİYON: TEMA SİLME ---
+def delete_theme(slug):
+    """
+    Temayı siler.
+    """
+    context = {'user': tk.c.user or tk.c.auth_user_obj.name}
+    
+    if tk.request.method == 'POST':
+        try:
+            tk.get_action('theme_category_delete')(context, {'slug': slug})
+            tk.h.flash_success(tk._('Tema başarıyla silindi.'))
+            return tk.h.redirect_to('temalar_sayfasi.index')
+        except tk.ValidationError as e:
+            tk.h.flash_error(str(e))
+            return tk.h.redirect_to('temalar_sayfasi.edit', slug=slug)
+        except Exception as e:
+            tk.h.flash_error(tk._(f'Tema silinirken bir hata oluştu: {e}'))
+            return tk.h.redirect_to('temalar_sayfasi.edit', slug=slug)
+    
+    # GET isteği ile direkt erişimi engelle
+    tk.abort(405, tk._('Bu sayfaya sadece POST metodu ile erişilebilir'))
 
 
 class TemalarSayfasiPlugin(p.SingletonPlugin):
@@ -137,5 +155,6 @@ class TemalarSayfasiPlugin(p.SingletonPlugin):
         # /temalar/ekonomi gibi dinamik URL'leri yakalar
         blueprint.add_url_rule('/temalar/<slug>', endpoint='read', view_func=read_theme)
         blueprint.add_url_rule('/temalar/<slug>/edit', endpoint='edit', view_func=edit_theme, methods=['GET', 'POST'])
+        blueprint.add_url_rule('/temalar/<slug>/delete', endpoint='delete', view_func=delete_theme, methods=['POST'])
 
         return blueprint
