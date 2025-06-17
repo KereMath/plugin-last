@@ -1,0 +1,194 @@
+{% extends "page.html" %}
+
+{% block subtitle %}{{ _('Temalar') }}{% endblock %}
+
+{% block primary_content %}
+<div class="module">
+  <div class="module-content">
+    <h1 class="page-heading">{{ _('Tema Kategorileri') }}</h1>
+    <div id="status" style="color: #888; font-style: italic;">Yükleniyor...</div>
+    <div id="error" style="display:none; color: #d9534f; background-color: #f2dede; border: 1px solid #ebccd1; padding: 15px; border-radius: 4px; margin: 15px 0;"></div>
+    
+    <div id="theme-grid" class="theme-grid">
+      </div>
+  </div>
+</div>
+
+<style>
+  /* Ana Konteyner - Flexbox ile kartları yan yana dizer ve sığmazsa alt satıra atar */
+  .theme-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; /* Kartlar arası boşluk */
+    padding: 0;
+    margin-top: 20px;
+  }
+
+  /* Tek bir tema kartı */
+  .theme-card {
+    flex: 1 1 320px; /* Esnek büyüme, küçülme ve temel genişlik */
+    max-width: 350px;
+    color: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+
+  .theme-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+
+  /* Kart içeriği */
+  .card-header .title {
+    font-size: 14px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 0 0 10px 0;
+    display: flex;
+    align-items: center;
+  }
+  .card-header .title .fa {
+      margin-right: 8px;
+  }
+
+  .card-body .description {
+    font-size: 14px;
+    margin: 0;
+    min-height: 40px; /* Açıklama alanı için minimum yükseklik */
+  }
+
+  .card-body .meta-info {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 10px;
+  }
+
+  /* İstatistikler Bölümü */
+  .card-stats {
+    display: flex;
+    justify-content: flex-start;
+    gap: 30px;
+    margin: 20px 0;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .stat-item .number {
+    font-size: 28px;
+    font-weight: bold;
+    display: block;
+  }
+
+  .stat-item .label {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+  
+  /* Buton Bölümü */
+  .card-footer {
+    margin-top: auto; /* Butonu her zaman kartın en altına iter */
+  }
+
+  .btn-details {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #333;
+    padding: 12px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.2s;
+  }
+
+  .btn-details:hover {
+    background-color: white;
+    color: #000;
+  }
+</style>
+{% endblock %}
+
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const apiUrl = '/api/3/action/theme_category_list';
+        const statusEl = document.getElementById('status');
+        const errorEl = document.getElementById('error');
+        const gridEl = document.getElementById('theme-grid');
+
+        // Tarih formatlama fonksiyonu
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const options = { day: 'numeric', month: 'short', year: 'numeric' };
+            return new Date(dateString).toLocaleDateString('tr-TR', options);
+        }
+
+        fetch(apiUrl)
+            .then(response => {
+                if (!response.ok) { throw new Error(`Sunucuya ulaşılamadı. Durum: ${response.status}`); }
+                return response.json();
+            })
+            .then(data => {
+                statusEl.style.display = 'none';
+
+                if (data.success) {
+                    const categories = data.result;
+                    if (categories && categories.length > 0) {
+                        gridEl.innerHTML = ''; // Yükleniyor mesajını temizle
+                        categories.forEach(category => {
+                            // Ana kart div'ini oluştur
+                            const card = document.createElement('div');
+                            card.className = 'theme-card';
+                            // Arka plan rengini API'den gelen veriye göre ayarla
+                            card.style.backgroundColor = category.color || '#6c757d'; // Eğer renk yoksa gri bir renk kullan
+
+                            // FontAwesome ikonunu oluştur
+                            const iconHtml = category.icon ? `<i class="fa fa-${category.icon}"></i>` : '';
+
+                            // Kartın tüm HTML içeriğini oluştur
+                            card.innerHTML = `
+                                <div class="card-header">
+                                    <h3 class="title">${iconHtml} ${category.name}</h3>
+                                </div>
+                                <div class="card-body">
+                                    <p class="description">${category.description || 'Açıklama mevcut değil.'}</p>
+                                    <p class="meta-info">Son Güncelleme: ${formatDate(category.created_at)}</p>
+                                </div>
+                                <div class="card-stats">
+                                    <div class="stat-item">
+                                        <span class="number">${category.dataset_count}</span>
+                                        <span class="label">Veri Seti</span>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <a href="/dataset?theme=${category.slug}" class="btn-details">Detaylı İncele</a>
+                                </div>
+                            `;
+                            
+                            // Oluşturulan kartı grid'e ekle
+                            gridEl.appendChild(card);
+                        });
+                    } else {
+                        statusEl.textContent = 'Gösterilecek tema bulunamadı.';
+                        statusEl.style.display = 'block';
+                    }
+                } else {
+                    throw new Error(data.error ? data.error.message : 'API bilinmeyen bir hata döndürdü.');
+                }
+            })
+            .catch(error => {
+                console.error('Hata:', error);
+                statusEl.style.display = 'none';
+                errorEl.textContent = `Bir hata oluştu: ${error.message}`;
+                errorEl.style.display = 'block';
+            });
+    });
+  </script>
+{% endblock %}

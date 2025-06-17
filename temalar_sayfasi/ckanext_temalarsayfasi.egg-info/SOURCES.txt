@@ -1,0 +1,10 @@
+setup.py
+ckanext/__init__.py
+ckanext/temalar_sayfasi/__init__.py
+ckanext/temalar_sayfasi/plugin.py
+ckanext/temalar_sayfasi/templates/theme/index.html
+ckanext_temalarsayfasi.egg-info/PKG-INFO
+ckanext_temalarsayfasi.egg-info/SOURCES.txt
+ckanext_temalarsayfasi.egg-info/dependency_links.txt
+ckanext_temalarsayfasi.egg-info/entry_points.txt
+ckanext_temalarsayfasi.egg-info/top_level.txt
