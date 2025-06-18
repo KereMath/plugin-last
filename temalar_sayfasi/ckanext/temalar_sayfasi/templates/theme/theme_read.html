@@ -7,11 +7,13 @@
   {{ super() }}
   <style>
     /* CKAN'ın varsayılan başlığını ve açıklamasını gizle - "Sağlık" gibi başlıkları kaldırır */
+    section.module .module-content h1.page-heading,
+    section.module .module-content p {
+      display: none !important;
+    }
 
     /* "Bu Temadaki Veri Setleri" başlığını gizle */
-    div.module-content h3 {
-        display: none !important;
-    }
+
 
     /* Mevcut fab-edit-theme butonu için orijinal stilini koru */
     .fab-edit-theme {
