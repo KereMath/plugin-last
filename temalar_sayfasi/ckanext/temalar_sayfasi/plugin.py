@@ -100,7 +100,7 @@ def read_theme(slug):
             (tk._('Name Ascending'), 'title_string asc'),
             (tk._('Name Descending'), 'title_string desc'),
             (tk._('Last Modified'), 'metadata_modified desc'),
-            (tk._('Popular'), 'views_recent desc') if tk.g.tracking_enabled else (False, False) # tk.g.tracking_enabled kullanıldı
+            (tk._('Popular'), 'views_recent desc') if tk.app_globals.tracking_enabled else (False, False) # tk.app_globals.tracking_enabled kullanıldı
         ]
         tk.c.search_facets = {} # Basitlik için facet'leri boş bırakıyoruz
 
