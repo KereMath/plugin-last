@@ -2,7 +2,8 @@ import ckan.plugins as p
 import ckan.plugins.toolkit as tk
 from flask import Blueprint
 import os
-
+import logging # Loglama için eklendi
+import traceback # Detaylı traceback için eklendi
 # Bu fonksiyonlar aynı kalıyor
 def index():
     return tk.render('theme/index.html')
