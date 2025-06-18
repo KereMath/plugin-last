@@ -6,6 +6,8 @@ import ckan.lib.app_globals as app_globals
 import logging
 import traceback
 # Bu fonksiyonlar aynı kalıyor
+log = logging.getLogger(__name__) # Logger objesini burada tanımlıyoruz
+
 def index():
     return tk.render('theme/index.html')
 
