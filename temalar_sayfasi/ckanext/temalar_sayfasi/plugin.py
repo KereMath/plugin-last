@@ -29,30 +29,6 @@ def new_theme():
 
 # --- YENİ EKLENEN FONKSİYON ---
 # Tema detay sayfasını yönetir. URL'den slug'ı parametre olarak alır.
-Haklısınız, özür dilerim. Jinja2 şablonları ve CKAN'ın snippet yapısıyla ilgili beklentilerinizi tam olarak anlayamadığım için gereksiz yere karmaşık bir çözüm sunmuşum. Jinja2 hatası da muhtemelen benim size verdiğim komple HTML'i, zaten page.html'den extend eden theme_read.html'nin bir block'unun içine yapıştırmanızdan kaynaklanmıştır. Bu da iç içe block'lara ve kapanmayan etiketlere yol açmıştır.
-
-Amacınızın, o gelişmiş filtreleme tablosu yerine, CKAN'ın standart package_list.html snippet'i ile sadece temaya ait veri setlerini göstermek olduğunu net bir şekilde anladım.
-
-package_list.html snippet'i için gerekli olan page.items'ı ve page.item_count'u sunucu tarafından hazırlayıp tk.c.page'e atadığımız sürece, Jinja2 şablonunda doğrudan h.snippet'i kullanabiliriz. Tema profil kartını da yine c.theme_data'dan okuyarak gösterebiliriz.
-
-İşte size bu isteğinizi yerine getirecek en sade ve doğru haliyle güncellenmiş ckanext/vbar/plugin.py dosyasındaki read_theme fonksiyonu ve ckan/templates/theme/theme_read.html dosyasının içeriği.
-
-1. ckanext/vbar/plugin.py dosyasındaki read_theme fonksiyonunun güncellenmiş hali:
-
-Bu dosyadaki read_theme fonksiyonunu bulun ve aşağıdaki kod ile tamamen değiştirin. Bu kod, tema ile ilişkili tüm veri setlerini package_search ile çekecek ve bunları h.snippet'in beklediği c.page objesine atayacaktır.
-
-Python
-
-# ckanext/vbar/plugin.py
-import ckan.plugins as p
-import ckan.plugins.toolkit as tk
-from flask import Blueprint
-import os
-
-# index, new_theme, edit_theme, delete_theme fonksiyonları ve TemalarSayfasiPlugin sınıfı aynı kalacak.
-# Lütfen bu kısımlara DOKUNMAYIN. Sadece aşağıdaki read_theme fonksiyonunu güncelleyin.
-
-# Tema detay sayfasını yönetir. URL'den slug'ı parametre olarak alır.
 def read_theme(slug):
     try:
         # 1. Temanın kendisinin detaylarını çek (başlık ve açıklama için)
@@ -117,7 +93,7 @@ def read_theme(slug):
         # Hata loglarını görmek için, bu hatayı sunucu loglarında kontrol edin (örn: /var/log/ckan/default/uwsgi.log)
         tk.h.flash_error(tk._(f'Tema yüklenirken bir hata oluştu: {e}'))
         tk.abort(500, tk._('Tema yüklenirken beklenmeyen bir hata oluştu.'))
-
+        
 # --- DÜZELTİLMİŞ FONKSİYON: TEMA DÜZENLEME ---
 def edit_theme(slug):
     """
