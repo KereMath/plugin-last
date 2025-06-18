@@ -59,6 +59,19 @@
     }
 
     /* YENİ: Tema Profil Kartı Stili (Sidebar için) */
+    .sidebar-filter {
+      width: 300px;
+      float: left; /* Sol tarafa sabitle */
+      margin-right: 20px; /* İçerik ile arasında boşluk bırak */
+      background-color: #fff;
+      border-right: 1px solid #e9ecef;
+      padding: 20px;
+      box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+    }
+    .main-content-area { /* Yeni içerik alanı kapsayıcısı */
+        margin-left: 320px; /* Sidebar genişliği + boşluk */
+    }
+
     .profile-card.theme-profile {
       background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); /* Cyan tonları */
       border-radius: 12px;
@@ -140,12 +153,11 @@
     </a>
   {% endif %}
 
-  {# Tema başlığı ve açıklaması #}
+  {# Ana sayfa başlığı ve açıklaması #}
   <section class="module">
     <div class="module-content">
       <h1 class="page-heading">
         {% if c.theme_data.category.icon %}
-          {# Font Awesome ikonunu temanın rengiyle göster #}
           <i class="fa fa-{{ c.theme_data.category.icon }}" style="color:{{ c.theme_data.category.color }}; margin-right: 15px;"></i>
         {% endif %}
         {{ c.theme_data.category.name }}
@@ -156,62 +168,66 @@
     </div>
   </section>
 
-  {# YENİ: Tema Bilgileri için Profil Kartı (Sol Üstte) #}
-  <div class="sidebar-filter" style="width: 300px; float: left; margin-right: 20px;">
-    <div class="profile-card theme-profile">
-      <div class="profile-header">
-        {% if c.theme_data.category.icon %}
-          <div class="profile-image" style="background-color: {{ c.theme_data.category.color }};">
-            <i class="fa fa-{{ c.theme_data.category.icon }}"></i>
+  {# YENİ: Sol Taraftaki Tema Profil Kartı ve Ana İçerik Alanı #}
+  <div class="page-layout"> {# Ana düzeni tutan bir div #}
+    <div class="sidebar-filter">
+      <div class="profile-card theme-profile">
+        <div class="profile-header">
+          {% if c.theme_data.category.icon %}
+            <div class="profile-image" style="background-color: {{ c.theme_data.category.color }};">
+              <i class="fa fa-{{ c.theme_data.category.icon }}"></i>
+            </div>
+          {% else %}
+            <div class="profile-image"></div>
+          {% endif %}
+          <div>
+            <h3 class="profile-title">{{ c.theme_data.category.name }}</h3>
+            <div class="profile-type">{{ _('Tema Kategorisi') }}</div>
           </div>
-        {% else %}
-          <div class="profile-image"></div>
+        </div>
+        <div class="profile-info">
+          <div class="profile-field">
+            <span class="profile-field-label">{{ _('Veri Seti') }}:</span>
+            <span class="profile-field-value">{{ c.page.item_count }}</span>
+          </div>
+          {% if c.theme_data.category.created_at %}
+          <div class="profile-field">
+            <span class="profile-field-label">{{ _('Oluşturulma') }}:</span>
+            {# Python datetime objesini stringe çevirirken hata almamak için strftime kullanıldı #}
+            <span class="profile-field-value">{{ c.theme_data.category.created_at.strftime('%Y-%m-%d') if c.theme_data.category.created_at else '' }}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% if c.theme_data.category.description %}
+        <div class="profile-description">
+          {{ c.theme_data.category.description }}
+        </div>
         {% endif %}
-        <div>
-          <h3 class="profile-title">{{ c.theme_data.category.name }}</h3>
-          <div class="profile-type">{{ _('Tema Kategorisi') }}</div>
-        </div>
       </div>
-      <div class="profile-info">
-        <div class="profile-field">
-          <span class="profile-field-label">{{ _('Veri Seti') }}:</span>
-          <span class="profile-field-value">{{ c.page.item_count }}</span>
-        </div>
-        {% if c.theme_data.category.created_at %}
-        <div class="profile-field">
-          <span class="profile-field-label">{{ _('Oluşturulma') }}:</span>
-          <span class="profile-field-value">{{ c.theme_data.category.created_at.strftime('%Y-%m-%d') if c.theme_data.category.created_at else '' }}</span>
-        </div>
-        {% endif %}
-      </div>
-      {% if c.theme_data.category.description %}
-      <div class="profile-description">
-        {{ c.theme_data.category.description }}
-      </div>
-      {% endif %}
+
+      {# Bu temaya özel başka filtreler veya bilgiler buraya gelebilir #}
     </div>
 
-    {# Eğer başka filtreler eklemek isterseniz buraya gelebilir #}
-    {# Örneğin: <h3>Filtreler</h3> #}
-    {# <div class="filter-section">...</div> #}
-  </div>
+    <div class="main-content-area"> {# Ana içerik alanı #}
+      <div class="module">
+        <div class="module-content">
+          <h3>{{ _('Bu Temadaki Veri Setleri') }} ({{ c.page.item_count }})</h3>
 
-  {# Veri seti listesi - SADECE H.SNIPPET KULLANILARAK #}
-  <div class="module" style="margin-left: 320px;"> {# Sidebar'ın genişliği kadar boşluk bırak #}
-    <div class="module-content">
-      <h3>{{ _('Bu Temadaki Veri Setleri') }} ({{ c.page.item_count }})</h3> {# c.page.item_count kullanılır #}
+          {# Arama formu ve sıralama seçenekleri #}
+          {{ h.snippet('snippets/search_form.html', form_id='theme-datasets-search-form', type='dataset', query=c.q, sorting=c.sort_by_options, sorting_selected=c.sort_by_selected, count=c.page.item_count, facets=c.search_facets, placeholder=_('Search datasets...')) }}
 
-      {% if c.page.items %} {# c.page.items kullanılır #}
-        {{ h.snippet('snippets/search_form.html', form_id='theme-datasets-search-form', type='dataset', query=c.q, sorting=c.sort_by_options, sorting_selected=c.sort_by_selected, count=c.page.item_count, facets=c.search_facets, placeholder=_('Search datasets...')) }}
-        {{ h.snippet('snippets/package_list.html', packages=c.page.items) }}
-      {% else %}
-        <p class="empty-message">{{ _('Bu temada henüz veri seti bulunmamaktadır.') }}</p>
-      {% endif %}
+          {% if c.page.items %}
+            {{ h.snippet('snippets/package_list.html', packages=c.page.items) }}
+          {% else %}
+            <p class="empty-message">{{ _('Bu temada henüz veri seti bulunmamaktadır.') }}</p>
+          {% endif %}
 
-      {# Sayfalama kontrolleri #}
-      {% if c.page.pager %}
-        {{ c.page.pager(q=c.q) }}
-      {% endif %}
+          {# Sayfalama kontrolleri #}
+          {% if c.page.pager %}
+            {{ c.page.pager(q=c.q) }}
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
 {% endblock %}
