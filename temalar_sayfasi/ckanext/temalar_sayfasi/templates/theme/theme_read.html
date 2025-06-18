@@ -1,10 +1,8 @@
-{% extends "page.html" %}
-
-{# Sayfa başlığını dinamik olarak temanın adıyla ayarla #}
-{% block subtitle %}{{ c.theme_data.category.name }}{% endblock %}
-
-{% block styles %}
-  {{ super() }}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>Veri Seti Tablosu</title>
   <style>
     /* CKAN arama formunu gizle (genel sayfa düzenini etkilememesi için) */
     .search-form {
@@ -406,6 +404,7 @@
   {% block primary_content %}
     <div class="page-container">
       <div class="sidebar-filter" id="filterSidebar">
+        {# Tema Profil Kartı burada render edilecek #}
         <div id="profileCard" class="profile-card" style="display: none;"></div>
         
         <h3>Filtreler</h3>
@@ -455,6 +454,31 @@
       </div>
 
       <div class="main-container">
+        {# Tema başlığı ve açıklaması - Ana içerik üstünde kalacak #}
+        <section class="module">
+            <div class="module-content">
+                <h1 class="page-heading">
+                    {% if c.theme_data.category.icon %}
+                        <i class="fa {{ c.theme_data.category.icon }}" style="color:{{ c.theme_data.category.color }}; margin-right: 15px;"></i>
+                    {% endif %}
+                    {{ c.theme_data.category.name }}
+                </h1>
+                {% if c.theme_data.category.description %}
+                    <p>{{ c.theme_data.category.description }}</p>
+                {% endif %}
+                {# Sistem yöneticisi ise, düzenleme butonu #}
+                {% if h.check_access('sysadmin') %}
+                    <a href="{{ h.url_for('temalar_sayfasi.edit', slug=c.theme_data.category.slug) }}" 
+                       class="fab-edit-theme" 
+                       data-toggle="tooltip" 
+                       data-placement="left" 
+                       title="{{ _('Temayı Yönet') }}">
+                       <i class="fa fa-cog"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </section>
+
         <div class="pagination-controls">
           <div class="per-page-select">
             <label for="itemsPerPage">Sayfa başına:</label>
@@ -507,17 +531,28 @@
     var itemsPerPage = 20;
     var usersLoaded = false;
     
-    var currentThemeSlugFromURL = null; // URL'den alınan temanın slug'ı
-    var currentThemeData = null; // URL'deki temaya ait tüm veriler (profil kartı için)
+    // YENİ: URL'den gelen tema bilgisi için değişkenler
+    var currentThemeSlugFromURL = null; 
+    var currentThemeData = null; 
 
-    // --- Fonksiyonlar (Orijinal yapı korunarak) ---
+    // --- Fonksiyonlar ---
 
     function getPathInfo() {
       var currentUrl = window.location.pathname;
-      // Tema sayfası kontrolü eklendi
-      if (currentUrl.startsWith('/temalar/') && currentUrl.split('/').length > 2) {
-        return { type: 'theme', name: currentUrl.split('/')[2] };
+      if (currentUrl.startsWith('/temalar/') && currentUrl.split('/').length > 2 && currentUrl.endsWith('/')) {
+          // /temalar/slug/ veya /temalar/slug gibi durumları yakalar
+          let slug = currentUrl.split('/')[2];
+          if (slug && slug.length > 0) {
+            return { type: 'theme', name: slug };
+          }
+      } else if (currentUrl.startsWith('/temalar/') && currentUrl.split('/').length == 3) {
+          // /temalar/slug
+          let slug = currentUrl.split('/')[2];
+          if (slug && slug.length > 0) {
+            return { type: 'theme', name: slug };
+          }
       }
+      
       if (currentUrl.startsWith('/organization/')) return { type: 'organization', name: currentUrl.replace('/organization/', '') };
       if (currentUrl.startsWith('/group/')) return { type: 'group', name: currentUrl.replace('/group/', '') };
       if (currentUrl.startsWith('/user/')) return { type: 'user', name: currentUrl.replace('/user/', '') };
@@ -571,7 +606,7 @@
       }
     }
 
-    // YENİ: Tema Profil Kartı Render Fonksiyonu
+    // YENİ: Tema Profil Kartı Render Fonksiyonu (bu artık doğrudan Jinja bağlamından beslenmeyecek, JS kendi çekecek)
     function renderThemeProfileCard(themeData) {
         var profileCard = document.getElementById('profileCard');
         if (!themeData) {
@@ -604,6 +639,7 @@
     }
 
 
+    // Mevcut renderProfileCard fonksiyonu (kullanıcı/organizasyon/grup profilleri için)
     function renderProfileCard(profileData, profileType) {
       var profileCard = document.getElementById('profileCard');
       if (!profileData) {
@@ -616,7 +652,6 @@
       if (profileData.image_display_url) {
         html += '<img src="' + profileData.image_display_url + '" class="profile-image" alt="' + (profileData.title || profileData.name || '') + '">';
       } else {
-        // İkon yerine boş div veya varsayılan ikon
         html += '<div class="profile-image"></div>';
       }
       html += '<div>';
@@ -660,11 +695,13 @@
       if (pathInfo.type === 'organization' && pathInfo.name) return baseQuery + '&fq=organization:' + encodeURIComponent(pathInfo.name);
       if (pathInfo.type === 'group' && pathInfo.name) return baseQuery + '&fq=groups:' + encodeURIComponent(pathInfo.name);
       if (pathInfo.type === 'user' && pathInfo.name) return baseQuery;
+      
       // Tema filtresi için fq parametresi package_search API'sinde doğrudan bulunmadığı için
-      // tema filtrelemesini JavaScript'te yapacağız.
+      // tema filtrelemesini JavaScript'te yapacağız, bu yüzden burada özel fq eklemiyoruz.
       return baseQuery;
     }
     
+    // YENİ: Profil verilerini URL'e göre yükleyen ana fonksiyon
     async function loadProfileDataBasedOnURL() {
         var pathInfo = getPathInfo();
         var profileCard = document.getElementById('profileCard'); 
@@ -680,9 +717,13 @@
                 const themeResponse = await fetch(`${ckan_api_base}theme_category_show?slug=${pathInfo.name}`, { credentials: 'include' });
                 const themeData = await themeResponse.json();
                 if (themeData.success && themeData.result && themeData.result.category) {
-                    currentThemeData = themeData.result.category; 
-                    currentThemeSlugFromURL = pathInfo.name; 
+                    currentThemeData = themeData.result.category; // Tema profil kartı için veriyi sakla
+                    currentThemeSlugFromURL = pathInfo.name; // URL'deki slug'ı sakla
                     renderThemeProfileCard(currentThemeData);
+
+                    // Eğer tema sayfasındaysak, ilgili temayı selectedThemes'e ekle
+                    // Filtre fonksiyonu otomatik olarak bu temayı filtreleyecektir.
+                    selectedThemes.add(currentThemeData.name); 
                 } else {
                     console.warn(`Tema '${pathInfo.name}' detayları bulunamadı veya başarı false.`);
                 }
@@ -715,6 +756,7 @@
       var selectors = ['.sidebar-filter', '.dataset-table', '.main-container', '.page-container'];
       selectors.forEach(selector => {
         var elements = document.querySelectorAll(selector);
+        // İlk elementi hariç tutarak diğerlerini gizle
         for (var i = 1; i < elements.length; i++) {
           elements[i].classList.add('duplicate-hidden');
         }
@@ -841,10 +883,10 @@
         var title = pkg.title || pkg.name || '';
         var link = '/dataset/' + encodeURIComponent(pkg.name);
         var desc = pkg.notes ? pkg.notes.replace(/\n/g, ' ').substring(0, 150) + (pkg.notes.length > 150 ? '...' : '') : '<span class="empty-cell">Yok</span>';
-        var org = pkg.organization?.title || '<span class="empty-cell">Yok</span>';
+        var org = pkg.organization?.title || '<span class="empty-cell">Yok</span>'; // organization object'ten title alındı
         var user = pkg.creatorUsername ? `<span class="user-tag">${pkg.creatorUsername}</span>` : '<span class="empty-cell">Bilinmiyor</span>';
-        var groups = pkg.groups?.length ? pkg.groups.map(g => `<span class="group-tag">${g.display_name || g.title || g.name}</span>`).join(' ') : '<span class="empty-cell">Yok</span>';
-        var tags = pkg.tags?.length ? pkg.tags.map(t => `<span class="tag-tag">${t.display_name || t.name}</span>`).join(' ') : '<span class="empty-cell">Yok</span>';
+        var groups = pkg.groups?.length ? pkg.groups.map(g => `<span class="group-tag">${g.display_name || g.title || g.name}</span>`).join(' ') : '<span class="empty-cell">Yok</span>'; // group object'ten display_name/title/name alındı
+        var tags = pkg.tags?.length ? pkg.tags.map(t => `<span class="tag-tag">${t.display_name || t.name}</span>`).join(' ') : '<span class="empty-cell">Yok</span>'; // tag object'ten display_name/name alındı
         var theme = pkg.themeName ? `<span class="theme-tag">${pkg.themeName}</span>` : '<span class="empty-cell">Yok</span>'; // YENİ: Tema sütun verisi
         var upd = pkg.metadata_modified ? new Date(pkg.metadata_modified).toLocaleDateString('tr-TR') : '<span class="empty-cell">–</span>';
         var formats = Object.keys(pkg.fmts).length ? Object.keys(pkg.fmts).map(f => `<span class="format-tag ${formatClass(f)}">${f.toUpperCase()}</span>`).join(' ') : '<span class="empty-cell">–</span>';
@@ -908,12 +950,14 @@
                     currentThemeSlugFromURL = pathInfo.name; 
                     renderThemeProfileCard(currentThemeData);
 
-                    // Eğer tema sayfasındaysak, ilgili temayı seçili hale getir
-                    // ve filterDatasets fonksiyonunun bu temayı otomatik filtrelemesini sağla
+                    // Eğer tema sayfasındaysak, ilgili temayı selectedThemes'e ekle
+                    // Filtre fonksiyonu otomatik olarak bu temayı filtreleyecektir.
                     selectedThemes.add(currentThemeData.name); 
+                } else {
+                    console.warn(`Tema '${pathInfo.name}' detayları bulunamadı veya başarı false.`);
                 }
             } catch (error) {
-                console.error("Tema profil bilgileri yüklenirken hata:", error);
+                console.error('Tema profil bilgileri yüklenirken hata:', error);
             }
         } else {
              // Diğer profil türleri için mevcut loadProfileData çağrısı
@@ -1069,6 +1113,5 @@
             localStorage.removeItem('globalSearchTerm');
         }
     }
-</script>
-</body>
-</html>
+  </script>
+{% endblock %}
