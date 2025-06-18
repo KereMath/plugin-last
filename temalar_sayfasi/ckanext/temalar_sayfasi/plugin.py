@@ -2,8 +2,9 @@ import ckan.plugins as p
 import ckan.plugins.toolkit as tk
 from flask import Blueprint
 import os
-import logging # Loglama için eklendi
-import traceback # Detaylı traceback için eklendi
+import ckan.lib.app_globals as app_globals 
+import logging
+import traceback
 # Bu fonksiyonlar aynı kalıyor
 def index():
     return tk.render('theme/index.html')
@@ -30,46 +31,28 @@ def new_theme():
 
 # --- YENİ EKLENEN FONKSİYON ---
 # Tema detay sayfasını yönetir. URL'den slug'ı parametre olarak alır.
-# ckanext/vbar/plugin.py
-import ckan.plugins as p
-import ckan.plugins.toolkit as tk
-from flask import Blueprint
-import os
-import logging # Loglama için eklendi
-import traceback # Detaylı traceback için eklendi
 
-log = logging.getLogger(__name__) # Logger tanımı
-
-# index, new_theme, edit_theme, delete_theme fonksiyonları ve TemalarSayfasiPlugin sınıfı aynı kalacak.
-# Lütfen bu kısımlara DOKUNMAYIN. Sadece aşağıdaki read_theme fonksiyonunu güncelleyin.
-
-# Tema detay sayfasını yönetir. URL'den slug'ı parametre olarak alır.
 def read_theme(slug):
     try:
         log.info(f"Tema okuma isteği alındı: {slug}")
 
-        # 1. Temanın kendisinin detaylarını çek (başlık ve açıklama için)
-        # tk.c.user, request context'inden otomatik gelir
         context = {'user': tk.c.user, 'ignore_auth': True} 
         theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})
-        tk.c.theme_data = theme_data # Şablonun subtitle bloğu ve ana tema bilgileri için
+        tk.c.theme_data = theme_data 
         log.info(f"Tema verisi başarıyla çekildi: {theme_data.get('category', {}).get('name')}")
 
-        # 2. Bu temaya atanmış veri setlerinin ID'lerini al
         dataset_ids_for_theme = [ds['id'] for ds in theme_data.get('datasets', [])]
         log.info(f"Temaya atanmış veri seti ID'leri: {dataset_ids_for_theme}")
 
-        # 3. Eğer temaya atanmış veri setleri varsa, package_search ile onları çek
         packages_list = []
         package_count = 0
         if dataset_ids_for_theme:
-            # Solr'da birden fazla ID ile filtrelemek için OR kullanılır
             fq_query = "id:({})".format(" OR id:".join(dataset_ids_for_theme))
             
             search_results = tk.get_action('package_search')(context, {
                 'fq': fq_query,
-                'rows': 1000, # Temadaki tüm datasetleri getirmek için yeterince yüksek bir sayı
-                'include_private': True # Gizli veri setlerini de dahil et
+                'rows': 1000, 
+                'include_private': True 
             })
             packages_list = search_results.get('results', [])
             package_count = search_results.get('count', 0)
@@ -77,22 +60,16 @@ def read_theme(slug):
         else:
             log.info("Temaya atanmış veri seti bulunamadı, package_search çağrılmadı.")
 
-        # 4. Jinja2 şablonu için bir "page" objesi oluştur
         class Page:
             def __init__(self, items, item_count):
                 self.items = items
                 self.item_count = item_count
-                # Sayfalama linkleri için gerekli olan q ve sort_by_selected
                 self.q = tk.request.args.get('q', '')
                 self.sort_by_selected = tk.request.args.get('sort', '')
-                # Basit bir pager fonksiyonu, eğer daha gelişmiş sayfalama istiyorsanız
-                # CKAN'ın kendi pagination objelerini kullanmalısınız.
                 self.pager = lambda current_q: tk.h.pager(current_q, self.item_count, tk.c.items_per_page or 20) if self.item_count > (tk.c.items_per_page or 20) else ''
 
-        # tk.c.page set ediliyor
         tk.c.page = Page(packages_list, package_count)
         
-        # search_form snippet'i için gerekli olabilecek diğer c objeleri
         tk.c.q = tk.request.args.get('q', '')
         tk.c.sort_by_selected = tk.request.args.get('sort', '')
         tk.c.sort_by_options = [
@@ -100,9 +77,10 @@ def read_theme(slug):
             (tk._('Name Ascending'), 'title_string asc'),
             (tk._('Name Descending'), 'title_string desc'),
             (tk._('Last Modified'), 'metadata_modified desc'),
-            (tk._('Popular'), 'views_recent desc') if tk.app_globals.tracking_enabled else (False, False) # tk.app_globals.tracking_enabled kullanıldı
+            # HATA VEREN SATIR BURASIYDI: tk.app_globals yerine CKAN'da doğru erişim tk.g veya direkt import edilen app_globals
+            (tk._('Popular'), 'views_recent desc') if app_globals.tracking_enabled else (False, False) # BURASI DÜZELTİLDİ
         ]
-        tk.c.search_facets = {} # Basitlik için facet'leri boş bırakıyoruz
+        tk.c.search_facets = {} 
 
         log.info("Şablon render ediliyor...")
         return tk.render('theme/theme_read.html')
@@ -110,12 +88,10 @@ def read_theme(slug):
         log.warning(f"Tema bulunamadı: {slug}")
         tk.abort(404, tk._('Tema bulunamadı'))
     except Exception as e:
-        # DETAYLI HATA LOGLAMASI BURADA!
         log.error(f"Tema yüklenirken beklenmeyen bir hata oluştu: {e}", exc_info=True)
         tk.h.flash_error(tk._(f'Tema yüklenirken bir hata oluştu: {e}'))
         tk.abort(500, tk._('Tema yüklenirken beklenmeyen bir hata oluştu.'))
 
-# Diğer fonksiyonlar ve sınıf olduğu gibi kalmalı.
 # --- DÜZELTİLMİŞ FONKSİYON: TEMA DÜZENLEME ---
 def edit_theme(slug):
     """
