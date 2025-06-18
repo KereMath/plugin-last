@@ -194,8 +194,7 @@
           <div class="profile-field">
             <span class="profile-field-label">{{ _('Oluşturulma') }}:</span>
             {# Python datetime objesini stringe çevirirken hata almamak için strftime kullanıldı #}
-            <span class="profile-field-value">{{ c.theme_data.category.created_at.strftime('%Y-%m-%d') if c.theme_data.category.created_at else '' }}</span>
-          </div>
+            <span class="profile-field-value">{{ c.theme_data.category.created_at.split('T')[0] if c.theme_data.category.created_at else '' }}</span>          </div>
           {% endif %}
         </div>
         {% if c.theme_data.category.description %}
