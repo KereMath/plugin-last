@@ -57,6 +57,73 @@
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
+
+    /* YENİ: Tema Profil Kartı Stili (Sidebar için) */
+    .profile-card.theme-profile {
+      background: linear-gradient(135deg, #00BCD4 0%, #0097A7 100%); /* Cyan tonları */
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 25px;
+      color: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .profile-card.theme-profile .profile-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .profile-card.theme-profile .profile-image {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      margin-right: 15px;
+      background-color: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+    }
+    .profile-card.theme-profile .profile-image .fa {
+      color: white;
+    }
+    .profile-card.theme-profile .profile-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+    .profile-card.theme-profile .profile-type {
+      font-size: 12px;
+      opacity: 0.8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+    .profile-card.theme-profile .profile-info {
+      display: grid;
+      gap: 8px;
+    }
+    .profile-card.theme-profile .profile-field {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      font-size: 14px;
+    }
+    .profile-card.theme-profile .profile-field-label {
+      opacity: 0.8;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .profile-card.theme-profile .profile-field-value {
+      text-align: right;
+      word-break: break-word;
+    }
+    .profile-card.theme-profile .profile-description {
+      margin-top: 12px;
+      font-size: 13px;
+      opacity: 0.9;
+      line-height: 1.4;
+      font-style: italic;
+    }
   </style>
 {% endblock %}
 
@@ -89,18 +156,59 @@
     </div>
   </section>
 
+  {# YENİ: Tema Bilgileri için Profil Kartı (Sol Üstte) #}
+  <div class="sidebar-filter" style="width: 300px; float: left; margin-right: 20px;">
+    <div class="profile-card theme-profile">
+      <div class="profile-header">
+        {% if c.theme_data.category.icon %}
+          <div class="profile-image" style="background-color: {{ c.theme_data.category.color }};">
+            <i class="fa fa-{{ c.theme_data.category.icon }}"></i>
+          </div>
+        {% else %}
+          <div class="profile-image"></div>
+        {% endif %}
+        <div>
+          <h3 class="profile-title">{{ c.theme_data.category.name }}</h3>
+          <div class="profile-type">{{ _('Tema Kategorisi') }}</div>
+        </div>
+      </div>
+      <div class="profile-info">
+        <div class="profile-field">
+          <span class="profile-field-label">{{ _('Veri Seti') }}:</span>
+          <span class="profile-field-value">{{ c.page.item_count }}</span>
+        </div>
+        {% if c.theme_data.category.created_at %}
+        <div class="profile-field">
+          <span class="profile-field-label">{{ _('Oluşturulma') }}:</span>
+          <span class="profile-field-value">{{ c.theme_data.category.created_at.strftime('%Y-%m-%d') if c.theme_data.category.created_at else '' }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% if c.theme_data.category.description %}
+      <div class="profile-description">
+        {{ c.theme_data.category.description }}
+      </div>
+      {% endif %}
+    </div>
+
+    {# Eğer başka filtreler eklemek isterseniz buraya gelebilir #}
+    {# Örneğin: <h3>Filtreler</h3> #}
+    {# <div class="filter-section">...</div> #}
+  </div>
+
   {# Veri seti listesi - SADECE H.SNIPPET KULLANILARAK #}
-  <div class="module">
+  <div class="module" style="margin-left: 320px;"> {# Sidebar'ın genişliği kadar boşluk bırak #}
     <div class="module-content">
       <h3>{{ _('Bu Temadaki Veri Setleri') }} ({{ c.page.item_count }})</h3> {# c.page.item_count kullanılır #}
 
       {% if c.page.items %} {# c.page.items kullanılır #}
+        {{ h.snippet('snippets/search_form.html', form_id='theme-datasets-search-form', type='dataset', query=c.q, sorting=c.sort_by_options, sorting_selected=c.sort_by_selected, count=c.page.item_count, facets=c.search_facets, placeholder=_('Search datasets...')) }}
         {{ h.snippet('snippets/package_list.html', packages=c.page.items) }}
       {% else %}
         <p class="empty-message">{{ _('Bu temada henüz veri seti bulunmamaktadır.') }}</p>
       {% endif %}
 
-      {# Sayfalama kontrolleri (eğer h.snippet tarafından otomatik sağlanmıyorsa ve ihtiyacınız varsa) #}
+      {# Sayfalama kontrolleri #}
       {% if c.page.pager %}
         {{ c.page.pager(q=c.q) }}
       {% endif %}
@@ -116,6 +224,5 @@
     $(function () {
       $('[data-toggle="tooltip"]').tooltip()
     })
-    // Dinamik filtreleme ve tablo için ek JavaScript kaldırıldı
   </script>
 {% endblock %}
