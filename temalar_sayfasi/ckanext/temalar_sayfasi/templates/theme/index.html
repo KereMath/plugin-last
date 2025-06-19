@@ -1,6 +1,7 @@
 {% extends "page.html" %}
 
 {% block subtitle %}{{ _('Temalar') }}{% endblock %}
+
 {%- block header %}
     {% include "header.html" %}
 <div id="title" class="package-title container-fluid" style="background-image:url('/base/images/theme/background_photo.jpg');color:#fff;">
@@ -8,11 +9,13 @@
       <div class="restricted-max-width">
       <div class="col-xs-12 col-md-10 col-md-offset-1">
       <div id="title-container" class="col-xs-10 col-md-6 text-left">
-      <h1 style="margin-left: 200px;">{{ _('Temalar') }}</h1>
+      <h1 style="margin-left: 200px; font-family: 'Montserrat', sans-serif !important;">{{ _('Temalar') }}</h1>
       </div>
       <div id="stats" class="col-xs-12 col-md-4 col-md-offset-2">
       <div class="col-xs-12" style="text-align: center;margin-top: 20px;font-size: 16px;">
-      <p class="stat" style="font-size: 30px;font-weight: bolder;"><span id="showing-count"></span><span style="font-size: 18px"> {{ _('Tema') }}</span></p>
+      <p class="stat" style="font-size: 30px;font-weight: bolder; font-family: 'Montserrat', sans-serif !important;">
+          <span id="showing-theme-count">0</span><span style="font-size: 18px"> {{ _('Tema') }}</span>
+      </p>
       </div>
       </div>
       </div>
@@ -20,17 +23,17 @@
       </div>
       </div>
 
-      {% endblock -%}
+{% endblock -%}
 
 {% block primary_content %}
 
 <div class="module">
   <div class="module-content">
-    <div id="status" style="color: #888; font-style: italic;">Yükleniyor...</div>
-    <div id="error" style="display:none; color: #d9534f; background-color: #f2dede; border: 1px solid #ebccd1; padding: 15px; border-radius: 4px; margin: 15px 0;"></div>
+    <div id="status" style="color: #888; font-style: italic; font-family: 'Montserrat', sans-serif !important;">Yükleniyor...</div>
+    <div id="error" style="display:none; color: #d9534f; background-color: #f2dede; border: 1px solid #ebccd1; padding: 15px; border-radius: 4px; margin: 15px 0; font-family: 'Montserrat', sans-serif !important;"></div>
     
     <div id="theme-grid" class="theme-grid">
-      </div>
+    </div>
       {# --- YENİ EKLENEN BUTON --- #}
   {# Bu butonu sadece admin yetkisine sahip kullanıcılar görür #}
   {% if h.check_access('sysadmin') %}
@@ -43,6 +46,13 @@
 </div>
 
 <style>
+/* --- Montserrat Font Tanımı --- */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+body, html, * {
+    font-family: 'Montserrat', sans-serif !important;
+}
+
   /* Yeni Tema Ekle butonu için stiller */
 .add-theme-fab {
   display: flex !important;
@@ -111,8 +121,8 @@
 
   /* Kart içeriği */
   .card-header .title {
-    font-size: 14px;
-    font-weight: bold;
+    font-size: 14px !important;
+    font-weight: bold !important;
     text-transform: uppercase;
     margin: 0 0 10px 0;
     display: flex;
@@ -123,13 +133,13 @@
   }
 
   .card-body .description {
-    font-size: 14px;
+    font-size: 14px !important;
     margin: 0;
     min-height: 40px; /* Açıklama alanı için minimum yükseklik */
   }
 
   .card-body .meta-info {
-      font-size: 12px;
+      font-size: 12px !important;
       opacity: 0.8;
       margin-top: 10px;
   }
@@ -145,13 +155,13 @@
   }
 
   .stat-item .number {
-    font-size: 28px;
-    font-weight: bold;
+    font-size: 28px !important;
+    font-weight: bold !important;
     display: block;
   }
 
   .stat-item .label {
-    font-size: 14px;
+    font-size: 14px !important;
     opacity: 0.8;
   }
   
@@ -165,17 +175,17 @@
     width: 100%;
     text-align: center;
     background-color: rgba(255, 255, 255, 0.9);
-    color: #333;
+    color: #333 !important;
     padding: 12px;
     border-radius: 10px;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: bold !important;
     transition: background-color 0.2s;
   }
 
   .btn-details:hover {
     background-color: white;
-    color: #000;
+    color: #000 !important;
   }
 </style>
 {% endblock %}
@@ -189,6 +199,7 @@
         const statusEl = document.getElementById('status');
         const errorEl = document.getElementById('error');
         const gridEl = document.getElementById('theme-grid');
+        const showingThemeCountEl = document.getElementById('showing-theme-count'); // Yeni eklenen element
 
         // Tarih formatlama fonksiyonu
         function formatDate(dateString) {
@@ -209,6 +220,8 @@
                     const categories = data.result;
                     if (categories && categories.length > 0) {
                         gridEl.innerHTML = ''; // Yükleniyor mesajını temizle
+                        showingThemeCountEl.textContent = categories.length; // Tema sayısını güncelle
+
                         categories.forEach(category => {
                             // Ana kart div'ini oluştur
                             const card = document.createElement('div');
@@ -245,6 +258,7 @@
                     } else {
                         statusEl.textContent = 'Gösterilecek tema bulunamadı.';
                         statusEl.style.display = 'block';
+                        showingThemeCountEl.textContent = '0'; // Tema sayısını sıfırla
                     }
                 } else {
                     throw new Error(data.error ? data.error.message : 'API bilinmeyen bir hata döndürdü.');
@@ -255,7 +269,43 @@
                 statusEl.style.display = 'none';
                 errorEl.textContent = `Bir hata oluştu: ${error.message}`;
                 errorEl.style.display = 'block';
+                showingThemeCountEl.textContent = '0'; // Hata durumunda da sıfırla
             });
     });
   </script>
 {% endblock %}
+
+{% block secondary_content %}
+{% endblock %}
+
+<style>
+body div.row.wrapper:before,
+div.row.wrapper:before{display:none!important;content:none!important}
+@media (min-width: 768px){.col-sm-9{width:100%!important;}}
+body.page-group aside.secondary.col-sm-3{display:none!important;}
+.groups-info .module{background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;}
+#groups-list {
+    grid-template-columns: repeat(5, 1fr) !important;
+}
+@media (max-width: 1200px) {
+  #groups-list {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+@media (max-width: 992px) {
+  #groups-list {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+@media (max-width: 768px) {
+  #groups-list {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 576px) {
+  #groups-list {
+    grid-template-columns: 1fr !important;
+  }
+}
+.media-grid:before{display:none!important;}
+</style>
