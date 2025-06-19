@@ -1,6 +1,8 @@
 {% extends "page.html" %}
 
 {% block subtitle %}{{ _('Temalar') }}{% endblock %}
+{%- block header %}
+    {% include "header.html" %}
 <div id="title" class="package-title container-fluid" style="background-image:url('/base/images/theme/background_photo.jpg');color:#fff;">
       <div class="background-overlay">
       <div class="restricted-max-width">
@@ -17,6 +19,9 @@
       </div>
       </div>
       </div>
+
+      {% endblock -%}
+
 {% block primary_content %}
 
 <div class="module">
