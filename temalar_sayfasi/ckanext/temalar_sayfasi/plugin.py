@@ -154,7 +154,6 @@ def read_theme(slug):
         if dataset_ids:
             fq = "id:({})".format(" OR id:".join(dataset_ids))
             res = tk.get_action('package_search')(context, {
-                'fq':              fq,
                 'rows':            ITEMS_PER_PAGE, # Sadece varsayılan sayıda göster
                 'include_private': True,
                 'start':           (tk.request.args.get('page', 1) - 1) * ITEMS_PER_PAGE # Sayfalama için
