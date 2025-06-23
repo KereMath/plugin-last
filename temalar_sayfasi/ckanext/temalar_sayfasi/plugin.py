@@ -83,10 +83,9 @@ def dashboard_themes():
             themes = []
             for assignment in user_assigned_themes_data:
                 try:
-                    # theme_category_show'a burada 'ignore_auth': True geçirebiliriz
-                    # Çünkü atama varsa, kullanıcı o temayı görmeye yetkilidir varsayımıyla hareket ediyoruz.
-                    # Ya da theme_category_show'un kendi içinde yetki kontrolü atamaya göre yapılmalı.
-                    # Şimdilik context'i olduğu gibi bırakalım, theme_category_show'un doğru çalıştığını varsayalım.
+                    # theme_category_show, temaların detaylarını döndürmeli.
+                    # Eğer yetki sorunları yaşanıyorsa, burada context'e 'auth_user_obj': tk.c.userobj
+                    # gibi ek bilgiler eklemek gerekebilir, ancak standart olarak user yeterli olmalı.
                     theme_detail = tk.get_action('theme_category_show')(context, {'slug': assignment['theme_slug']})
                     # API'den dönen dataset_count gibi bilgileri de ekleyebiliriz
                     themes.append(theme_detail) 
@@ -154,6 +153,7 @@ def read_theme(slug):
         if dataset_ids:
             fq = "id:({})".format(" OR id:".join(dataset_ids))
             res = tk.get_action('package_search')(context, {
+                'fq':              fq,
                 'rows':            ITEMS_PER_PAGE, # Sadece varsayılan sayıda göster
                 'include_private': True,
                 'start':           (tk.request.args.get('page', 1) - 1) * ITEMS_PER_PAGE # Sayfalama için
