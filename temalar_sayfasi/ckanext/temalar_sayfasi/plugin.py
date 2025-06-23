@@ -130,7 +130,22 @@ def read_theme(slug):
 
         context    = {'user': tk.c.user, 'ignore_auth': True}
         theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})
-        tk.c.theme_data = theme_data
+        tk.c.theme_data = theme_data # theme_data'yı şablona aktar
+
+        # Kullanıcının sysadmin olup olmadığını kontrol et
+        is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin
+        tk.c.is_sysadmin = is_sysadmin # Sysadmin durumunu şablona aktar
+
+        # Kullanıcının bu temadaki rolünü belirle
+        # Varsayılan olarak None, yetkisiz veya atanmamışsa
+        tk.c.user_theme_role_for_this_theme = None 
+        if not is_sysadmin and tk.c.userobj: # Sadece giriş yapmış sysadmin olmayan kullanıcılar için rolü kontrol et
+            user_id = tk.c.userobj.id
+            user_themes = tk.get_action('get_user_themes')(context, {'user_id': user_id})
+            current_user_assignment = next((t for t in user_themes if t['theme_slug'] == slug), None)
+            if current_user_assignment:
+                tk.c.user_theme_role_for_this_theme = current_user_assignment['role']
+
 
         dataset_ids = [ds['id'] for ds in theme_data.get('datasets', [])]
 
@@ -192,18 +207,15 @@ def edit_theme(slug):
     """Tema bilgilerini ve dataset atamalarını düzenler."""
     context = {'user': tk.c.user, 'ignore_auth': False}
 
-    # Kullanıcının sysadmin olup olmadığını kontrol et
     is_sysadmin = tk.check_access('sysadmin', context)
     
-    # Kullanıcının bu temadaki rolünü belirle
-    # Varsayılan olarak None, yetkisiz veya atanmamışsa
     tk.c.user_theme_role_for_this_theme = None 
     is_theme_authorized_for_edit = False
 
     if is_sysadmin:
-        tk.c.user_theme_role_for_this_theme = 'admin' # Sysadmin ise 'admin' gibi davran
+        tk.c.user_theme_role_for_this_theme = 'admin'
         is_theme_authorized_for_edit = True
-    elif tk.c.userobj: # Sadece giriş yapmış kullanıcılar için tema rolünü kontrol et
+    elif tk.c.userobj:
         user_id = tk.c.userobj.id
         user_themes = tk.get_action('get_user_themes')(context, {'user_id': user_id})
         current_user_assignment = next((t for t in user_themes if t['theme_slug'] == slug), None)
@@ -211,10 +223,9 @@ def edit_theme(slug):
         if current_user_assignment:
             assigned_role = current_user_assignment['role']
             tk.c.user_theme_role_for_this_theme = assigned_role
-            if assigned_role in ['admin', 'editor']: # Editörler ve adminler erişebilir
+            if assigned_role in ['admin', 'editor']:
                 is_theme_authorized_for_edit = True
 
-    # Eğer kullanıcı tema için düzenleme yetkisine sahip değilse (sysadmin veya atanmış admin/editör değilse)
     if not is_theme_authorized_for_edit:
         raise NotAuthorized(_('Bu temayı düzenlemek için yetkiniz yok.'))
 
@@ -224,7 +235,6 @@ def edit_theme(slug):
 
     if tk.request.method == 'POST':
         try:
-            # 1) Bilgileri güncelle
             update_data = {
                 'slug':        slug,
                 'name':        tk.request.form.get('name'),
@@ -234,7 +244,6 @@ def edit_theme(slug):
             }
             tk.get_action('theme_category_update')(context, update_data)
 
-            # 2) Dataset atamalarını güncelle
             new_ids = set(tk.request.form.getlist('dataset_ids'))
             current = tk.get_action('theme_category_show')(context, {'slug': slug})
             old_ids = set(ds['id'] for ds in current.get('datasets', []))
@@ -259,7 +268,6 @@ def edit_theme(slug):
             tk.c.data = tk.request.form
 
     try:
-        # theme_data'yı doğru şekilde al
         tk.c.theme_data = tk.get_action('theme_category_show')({}, {'slug': slug})
         all_ds = tk.get_action('package_search')(context, {
             'rows':            1000,
@@ -278,12 +286,11 @@ def delete_theme(slug):
     if tk.request.method != 'POST':
         tk.abort(405, tk._('Bu sayfaya sadece POST metodu ile erişilebilir'))
 
-    context = {'user': tk.c.user, 'ignore_auth': False} # Yetki kontrolü için ignore_auth False olmalı
+    context = {'user': tk.c.user, 'ignore_auth': False}
     
-    # Yetki kontrolü: Sadece sysadmin veya tema yöneticileri silebilir
     is_sysadmin = tk.check_access('sysadmin', context)
     if not is_sysadmin:
-        if not tk.c.userobj: # Eğer giriş yapmamışsa
+        if not tk.c.userobj:
             raise NotAuthorized('Bu temayı silmek için yetkiniz yok.')
 
         user_id = tk.c.userobj.id

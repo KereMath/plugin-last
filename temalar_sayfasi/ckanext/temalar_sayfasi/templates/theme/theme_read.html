@@ -1,101 +1,197 @@
 {% extends "page.html" %}
 
-{# Sayfa başlığını dinamik olarak temanın adıyla ayarla #}
-{% block subtitle %}{{ c.theme_data.category.name }}{% endblock %}
+{% block subtitle %}
+    {% if c.theme_data and c.theme_data.category %}
+        {{ c.theme_data.category.name }} - {% trans %}Temayı Düzenle{% endtrans %}
+    {% else %}
+        {% trans %}Temayı Düzenle{% endtrans %}
+    {% endif %}
+{% endblock %}
 
-{% block styles %}
-  {{ super() }}
-  <style>
-    /* CKAN'ın varsayılan başlığını ve açıklamasını gizle - "Sağlık" gibi başlıkları kaldırır */
-    section.module .module-content h1.page-heading,
-    section.module .module-content p {
-      display: none !important;
-    }
-
-    /* "Bu Temadaki Veri Setleri" başlığını gizle */
-
-
-    /* Mevcut fab-edit-theme butonu için orijinal stilini koru */
-    .fab-edit-theme {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      z-index: 1100;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background-color: #28a745;
-      color: white;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      transition: all 0.3s ease;
-    }
-    .fab-edit-theme:hover {
-      background-color: #218838;
-      transform: scale(1.1);
-    }
-  </style>
+{% block breadcrumbs %}
+    {{ h.build_nav_icon('home') }}
+    {{ h.link_to(_('Ana Sayfa'), h.url_for(controller='home', action='index')) }}
+    {{ h.build_nav_icon('caret-right') }}
+    {{ h.link_to(_('Temalar'), h.url_for('temalar_sayfasi.index')) }}
+    {{ h.build_nav_icon('caret-right') }}
+    {% if c.theme_data and c.theme_data.category %}
+        {{ h.link_to(c.theme_data.category.name, h.url_for('temalar_sayfasi.read', slug=c.theme_data.category.slug)) }}
+        {{ h.build_nav_icon('caret-right') }}
+        {% trans %}Düzenle{% endtrans %}
+    {% else %}
+        {% trans %}Tema Bulunamadı{% endtrans %}
+    {% endif %}
 {% endblock %}
 
 {% block primary_content %}
-  {# Sistem yöneticisi ise, düzenleme butonu sağ altta sabit olarak görünür #}
-  {% if h.check_access('sysadmin') %}
-    <a href="{{ h.url_for('temalar_sayfasi.edit', slug=c.theme_data.category.slug) }}"
-       class="fab-edit-theme"
-       data-toggle="tooltip"
-       data-placement="left"
-       title="{{ _('Temayı Yönet') }}">
-       <i class="fa fa-cog"></i>
-    </a>
-  {% endif %}
+    <div class="module">
+        <div class="module-content">
+            <h1 class="page-heading">
+                {% if c.theme_data and c.theme_data.category %}
+                    {% if c.theme_data.category.icon %}
+                        <i class="fa fa-{{ c.theme_data.category.icon }}" style="color:{{ c.theme_data.category.color }}; margin-right: 15px;"></i>
+                    {% endif %}
+                    {{ c.theme_data.category.name }} - {% trans %}Temayı Düzenle{% endtrans %}
+                {% else %}
+                    {% trans %}Temayı Düzenle{% endtrans %}
+                {% endif %}
+            </h1>
 
-  {# Ana sayfa başlığı ve açıklaması - Bunları gizlemek için yukarıdaki CSS yeterli olacaktır. #}
-  <section class="module">
-    <div class="module-content">
-      <h1 class="page-heading">
-        {% if c.theme_data.category.icon %}
-          <i class="fa fa-{{ c.theme_data.category.icon }}" style="color:{{ c.theme_data.category.color }}; margin-right: 15px;"></i>
-        {% endif %}
-        {{ c.theme_data.category.name }}
-      </h1>
-      {% if c.theme_data.category.description %}
-        <p>{{ c.theme_data.category.description }}</p>
-      {% endif %}
+            <form action="{{ h.url_for('temalar_sayfasi.edit', slug=c.theme_data.category.slug) }}" method="post" class="form-horizontal">
+                {# Form alanları buraya gelecek #}
+                <div class="form-group">
+                    <label for="name" class="control-label col-md-2">{% trans %}Tema Adı{% endtrans %}</label>
+                    <div class="col-md-8">
+                        <input type="text" id="name" name="name" class="form-control" value="{{ c.theme_data.category.name }}" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="slug" class="control-label col-md-2">{% trans %}URL Slug{% endtrans %}</label>
+                    <div class="col-md-8">
+                        <input type="text" id="slug" name="slug" class="form-control" value="{{ c.theme_data.category.slug }}" readonly>
+                        <p class="help-block">{% trans %}URL'de kullanılacak benzersiz isim. Değiştirilemez.{% endtrans %}</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="description" class="control-label col-md-2">{% trans %}Açıklama{% endtrans %}</label>
+                    <div class="col-md-8">
+                        <textarea id="description" name="description" class="form-control">{{ c.theme_data.category.description }}</textarea>
+                    </div>
+                </div>
+                 <div class="form-group">
+                    <label for="color" class="control-label col-md-2">{% trans %}Renk Kodu{% endtrans %}</label>
+                    <div class="col-md-8">
+                        <input type="color" id="color" name="color" class="form-control" value="{{ c.theme_data.category.color }}">
+                        <p class="help-block">{% trans %}Temanın kart rengi için HEX kodu.{% endtrans %}</p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="icon" class="control-label col-md-2">{% trans %}Font Awesome İkonu{% endtrans %}</label>
+                    <div class="col-md-8">
+                        <input type="text" id="icon" name="icon" class="form-control" value="{{ c.theme_data.category.icon }}">
+                        <p class="help-block">{% trans %}Örnek: fa-lightbulb. Sadece Font Awesome 4.7 ikonları.{% endtrans %}</p>
+                    </div>
+                </div>
+
+                <h3>{% trans %}Bu Temaya Atanmış Veri Setleri{% endtrans %}</h3>
+                <div class="form-group">
+                    <label for="dataset_ids" class="control-label col-md-2">{% trans %}Veri Setleri{% endtrans %}</label>
+                    <div class="col-md-8">
+                        <select id="dataset_ids" name="dataset_ids" multiple class="form-control">
+                            {% for dataset in c.all_datasets %}
+                                <option value="{{ dataset.id }}" {% if dataset.id in c.theme_data.datasets|map(attribute='id')|list %}selected{% endif %}>
+                                    {{ dataset.title or dataset.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <p class="help-block">{% trans %}Bu temaya atanacak veri setlerini seçin. Ctrl/Cmd tuşu ile çoklu seçim yapabilirsiniz.{% endtrans %}</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-md-offset-2 col-md-8">
+                        <button type="submit" class="btn btn-primary">{% trans %}Değişiklikleri Kaydet{% endtrans %}</button>
+                        <a href="{{ h.url_for('temalar_sayfasi.read', slug=c.theme_data.category.slug) }}" class="btn btn-default">{% trans %}İptal{% endtrans %}</a>
+                        <a href="{{ h.url_for('temalar_sayfasi.delete', slug=c.theme_data.category.slug) }}" class="btn btn-danger pull-right" data-module="confirm-action" data-module-text="{{ _('Bu temayı silmek istediğinizden emin misiniz?') }}">{% trans %}Temayı Sil{% endtrans %}</a>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
-  </section>
-
-  {# CKAN'ın varsayılan düzenini kullanmaya devam ediyoruz. #}
-  {# primary_content içerisinde CKAN'ın kendi fasetlerini ve liste snippet'lerini çağırıyoruz. #}
-  <div class="module">
-    <div class="module-content">
-      {# CKAN'ın kendi arama formu ve sıralama seçenekleri - Bu kalacak #}
-      {{ h.snippet('snippets/search_form.html', form_id='theme-datasets-search-form', type='dataset', query=c.q, sorting=c.sort_by_options, sorting_selected=c.sort_by_selected, count=c.page.item_count, facets=c.search_facets, placeholder=_('Search datasets...')) }}
-
-      {# CKAN'ın kendi veri seti listesi snippet'i - Bu kalacak #}
-      {% if c.page.items %}
-        {{ h.snippet('snippets/package_list.html', packages=c.page.items) }}
-      {% else %}
-        <p class="empty-message">{{ _('Bu temada henüz veri seti bulunmamaktadır.') }}</p>
-      {% endif %}
-
-      {# Sayfalama kontrolleri - Bu kalacak #}
-      {% if c.page.pager %}
-        {{ c.page.pager(q=c.q) }}
-      {% endif %}
-    </div>
-  </div>
 {% endblock %}
-
 
 {% block scripts %}
-  {{ super() }}
-  <script>
-    // Sayfadaki tüm bootstrap tooltip'lerini (ipuçlarını) etkinleştir
-    $(function () {
-      $('[data-toggle="tooltip"]').tooltip()
-    })
-  </script>
+    {{ super() }}
+    <script>
+        $(document).ready(function() {
+            $('#dataset_ids').select2(); // select2 kütüphanesini etkinleştir
+
+            // Sayfadaki tüm bootstrap tooltip'lerini (ipuçlarını) etkinleştir
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+    </script>
 {% endblock %}
+
+{% block aside_content %}{% endblock %}
+
+<style>
+/* --- Montserrat Font Tanımı --- */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+body, html, * {
+    font-family: 'Montserrat', sans-serif !important;
+}
+
+/* Yeni Tema Ekle butonu için stiller (Index.html'den kopyalandı) */
+.add-theme-fab {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    position: fixed !important;
+    bottom: 30px !important;
+    right: 30px !important;
+    z-index: 1100 !important;
+    width: 62px !important;
+    height: 60px !important;
+    padding: 0 21px !important;
+    background: linear-gradient(45deg, #28a745, #218838) !important;
+    color: #fff !important;
+    border-radius: 30px !important;
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3) !important;
+    text-decoration: none !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55) !important;
+}
+.add-theme-fab:hover {
+    width: 240px !important;
+    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.4) !important;
+}
+.add-theme-fab .fab-icon {
+    font-size: 22px !important;
+    line-height: 1 !important;
+}
+.add-theme-fab .fab-text {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    margin-left: 12px !important;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out 0.1s !important;
+}
+.add-theme-fab:hover .fab-text {
+    opacity: 1;
+}
+
+/* Sayfa başlığı ve açıklamasını gizleme (theme_read.html'den kopyalandı) */
+section.module .module-content h1.page-heading,
+section.module .module-content p {
+    display: none !important;
+}
+/* "Bu Temadaki Veri Setleri" başlığını gizle (ekstra stil) */
+.module-content h2.module-heading {
+    display: none !important;
+}
+
+/* Fab-edit-theme butonu için orijinal stil (theme_read.html'den kopyalandı) */
+.fab-edit-theme {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 1100;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #28a745;
+    color: white;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+.fab-edit-theme:hover {
+    background-color: #218838;
+    transform: scale(1.1);
+}
+</style>
