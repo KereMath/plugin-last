@@ -39,6 +39,10 @@ def index():
     # Bu sayfada admin butonları (Yeni Tema Ekle) asla görünmeyecek.
     # tk.c.is_dashboard bayrağını burada kullanmıyoruz, çünkü ayrı bir kontrol yapacağız.
     # Herkesin tüm temaları görmesi için API çağrısı JS'de olacak.
+    # Bu sayfa için c.is_dashboard'ı False olarak ayarlayalım ki JS tarafında ayırt edilebilsin.
+    tk.c.is_dashboard = False
+    tk.c.is_sysadmin = False # Public sayfada sysadmin kontrolü gerekmez
+    tk.c.themes = [] # Public sayfa için backend'den tema göndermiyoruz, JS çekecek.
     return tk.render('theme/index.html')
 
 def dashboard_themes():
@@ -79,6 +83,10 @@ def dashboard_themes():
             themes = []
             for assignment in user_assigned_themes_data:
                 try:
+                    # theme_category_show'a burada 'ignore_auth': True geçirebiliriz
+                    # Çünkü atama varsa, kullanıcı o temayı görmeye yetkilidir varsayımıyla hareket ediyoruz.
+                    # Ya da theme_category_show'un kendi içinde yetki kontrolü atamaya göre yapılmalı.
+                    # Şimdilik context'i olduğu gibi bırakalım, theme_category_show'un doğru çalıştığını varsayalım.
                     theme_detail = tk.get_action('theme_category_show')(context, {'slug': assignment['theme_slug']})
                     # API'den dönen dataset_count gibi bilgileri de ekleyebiliriz
                     themes.append(theme_detail) 
