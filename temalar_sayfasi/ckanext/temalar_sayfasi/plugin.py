@@ -56,7 +56,10 @@ def dashboard_themes():
         return tk.h.redirect_to('/')
 
     try:
-        is_sysadmin = tk.check_access('sysadmin', context)
+        # Daha güvenli sysadmin kontrolü: tk.c.userobj'nin sysadmin özelliğini doğrudan kullan
+        # Bu, tk.check_access yerine geçerek doğrudan hatayı önler
+        is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin 
+        
         tk.c.is_dashboard = True # Şablonda dashboard olduğunu belirtir
         tk.c.is_sysadmin = is_sysadmin # Şablonda sysadmin yetkisini belirtir
         
@@ -89,8 +92,10 @@ def dashboard_themes():
         tk.c.themes = themes # Şablona filtrelenmiş/tüm tema listesini aktar
 
     except NotAuthorized as e:
+        # Bu blok, hala başka bir yetkilendirme hatası oluşursa devreye girer
+        # Ancak yukarıdaki sysadmin kontrolü bu spesifik hatayı önlemeli
         tk.h.flash_error(tk._(str(e)))
-        return tk.h.redirect_to('/') # Yetkisizse ana sayfaya yönlendir (genel giriş yapılmadı kontrolünden sonra buraya düşmez)
+        return tk.h.redirect_to('/') 
     except Exception as e:
         log.error("Dashboard temaları yüklenirken genel hata: %s", e, exc_info=True)
         tk.h.flash_error(tk._(f'Temaları yüklenirken beklenmeyen bir hata oluştu: {e}'))
