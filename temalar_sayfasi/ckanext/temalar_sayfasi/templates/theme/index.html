@@ -9,8 +9,6 @@
 {% endblock %}
 
 {%- block header %}
-    {# Buradaki `super()` çağrısı, `page.html`'den gelen `header` içeriğini korur. #}
-    {# Eğer header'ın tamamen bu blok tarafından kontrol edilmesini istiyorsanız, `super()`'ı kaldırabilirsiniz. #}
     {{ super() }} 
     <div id="title" class="package-title container-fluid" style="background-image:url('/base/images/theme/background_photo.jpg');color:#fff;">
         <div class="background-overlay">

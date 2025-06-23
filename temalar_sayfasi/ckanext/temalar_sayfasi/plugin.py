@@ -36,13 +36,9 @@ ITEMS_PER_PAGE = int(tk.config.get('ckan.search.results_per_page', 20))
 
 def index():
     """Genel Tema listesi. Herkes tüm temaları görür. Yeni Tema Ekle butonu burada görünmez."""
-    # Bu sayfada admin butonları (Yeni Tema Ekle) asla görünmeyecek.
-    # tk.c.is_dashboard bayrağını burada kullanmıyoruz, çünkü ayrı bir kontrol yapacağız.
-    # Herkesin tüm temaları görmesi için API çağrısı JS'de olacak.
-    # Bu sayfa için c.is_dashboard'ı False olarak ayarlayalım ki JS tarafında ayırt edilebilsin.
     tk.c.is_dashboard = False
-    tk.c.is_sysadmin = False # Public sayfada sysadmin kontrolü gerekmez
-    tk.c.themes = [] # Public sayfa için backend'den tema göndermiyoruz, JS çekecek.
+    tk.c.is_sysadmin = False
+    tk.c.themes = []
     return tk.render('theme/index.html')
 
 def dashboard_themes():
@@ -52,41 +48,32 @@ def dashboard_themes():
     Diğerleri: Sadece atandığı temaları görür.
     'Yeni Tema Ekle' butonu sadece sysadmin'lere görünür.
     """
-    context = {'user': tk.c.user, 'ignore_auth': False} # ignore_auth false olmalı ki yetki kontrolü yapılsın
+    context = {'user': tk.c.user, 'ignore_auth': False}
     
-    # Dashboard sayfasına erişim kontrolü: Sadece giriş yapmış kullanıcılar
     if not tk.c.user:
         tk.h.flash_error(tk._('Bu sayfayı görüntülemek için giriş yapmalısınız.'))
         return tk.h.redirect_to('/')
 
     try:
-        # Daha güvenli sysadmin kontrolü: tk.c.userobj'nin sysadmin özelliğini doğrudan kullan
-        # Bu, tk.check_access yerine geçerek doğrudan hatayı önler
         is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin 
         
-        tk.c.is_dashboard = True # Şablonda dashboard olduğunu belirtir
-        tk.c.is_sysadmin = is_sysadmin # Şablonda sysadmin yetkisini belirtir
+        tk.c.is_dashboard = True
+        tk.c.is_sysadmin = is_sysadmin
         
         if is_sysadmin:
-            # Sysadmin ise tüm temaları getir (theme_category_list doğrudan beklenen formatı döner)
             themes = tk.get_action('theme_category_list')(context, {})
         else:
-            # Sysadmin değilse, kullanıcının atandığı temaları getir
-            user_id = tk.c.userobj.id # tk.c.userobj giriş yapmış kullanıcı için her zaman mevcut
+            user_id = tk.c.userobj.id
             
-            # Kullanıcının atandığı temaları getiren özel API eylemini kullan
             user_assigned_themes_data = tk.get_action('get_user_themes')(context, {'user_id': user_id})
             
             themes = []
             for assignment in user_assigned_themes_data:
                 try:
-                    # theme_category_show, {'category': {...}, 'datasets': [...]} döndürür
                     theme_detail = tk.get_action('theme_category_show')(context, {'slug': assignment['theme_slug']})
                     
                     if theme_detail and theme_detail.get('category'):
-                        # Tema detaylarını 'category' anahtarından al ve normalize et
                         normalized_theme = theme_detail['category']
-                        # dataset_count bilgisini de ekle (eğer theme_category_show döndürmüyorsa)
                         normalized_theme['dataset_count'] = len(theme_detail.get('datasets', []))
                         themes.append(normalized_theme)
                 except tk.ObjectNotFound:
@@ -96,11 +83,9 @@ def dashboard_themes():
                     log.error(f"Dashboard için tema detayları yüklenirken hata: {assignment['theme_slug']} - {e}")
                     continue
         
-        tk.c.themes = themes # Şablona filtrelenmiş/tüm tema listesini aktar
+        tk.c.themes = themes
 
     except NotAuthorized as e:
-        # Bu blok, hala başka bir yetkilendirme hatası oluşursa devreye girer
-        # Ancak yukarıdaki sysadmin kontrolü bu spesifik hatayı önlemeli
         tk.h.flash_error(tk._(str(e)))
         return tk.h.redirect_to('/') 
     except Exception as e:
@@ -108,13 +93,13 @@ def dashboard_themes():
         tk.h.flash_error(tk._(f'Temaları yüklenirken beklenmeyen bir hata oluştu: {e}'))
         tk.abort(500, tk._('Temaları yüklenirken beklenmeyen bir hata oluştu.'))
 
-    return tk.render('theme/index.html') # Aynı şablonu kullanabiliriz
+    return tk.render('theme/index.html')
 
 
 def new_theme():
     """Yeni tema oluştur (GET/POST). Yalnızca sysadmin erişebilir."""
     context = {'user': tk.c.user, 'ignore_auth': False}
-    tk.check_access('sysadmin', context) # Sadece sysadminler erişebilir
+    tk.check_access('sysadmin', context)
     
     tk.c.errors, tk.c.data = {}, {}
 
@@ -127,9 +112,9 @@ def new_theme():
             'icon':        tk.request.form.get('icon'),
         }
         try:
-            tk.get_action('theme_category_create')(context, data_dict) # Contexti ekle
+            tk.get_action('theme_category_create')(context, data_dict)
             tk.h.flash_success(tk._('Tema başarıyla oluşturuldu.'))
-            return tk.h.redirect_to('temalar_sayfasi.dashboard_index') # dashboard temalarına yönlendir
+            return tk.h.redirect_to('temalar_sayfasi.dashboard_index')
         except tk.ValidationError as e:
             tk.c.errors, tk.c.data = e.error_dict, data_dict
 
@@ -143,7 +128,7 @@ def read_theme(slug):
     try:
         log.info("Tema okuma isteği: %s", slug)
 
-        context    = {'user': tk.c.user, 'ignore_auth': True} # Okuma için yetkiyi göz ardı et
+        context    = {'user': tk.c.user, 'ignore_auth': True}
         theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})
         tk.c.theme_data = theme_data
 
@@ -154,13 +139,12 @@ def read_theme(slug):
             fq = "id:({})".format(" OR id:".join(dataset_ids))
             res = tk.get_action('package_search')(context, {
                 'fq':              fq,
-                'rows':            ITEMS_PER_PAGE, # Sadece varsayılan sayıda göster
+                'rows':            ITEMS_PER_PAGE,
                 'include_private': True,
-                'start':           (tk.request.args.get('page', 1) - 1) * ITEMS_PER_PAGE # Sayfalama için
+                'start':           (tk.request.args.get('page', 1) - 1) * ITEMS_PER_PAGE
             })
             packages, total = res['results'], res['count']
 
-        # ---------------- Düzeltilmiş Page sınıfı ----------------
         class Page:
             def __init__(self, items, item_count):
                 self.items          = items
@@ -169,21 +153,17 @@ def read_theme(slug):
                 self.sort_by_selected = tk.request.args.get('sort', '')
 
                 def _pager(**kw):
-                    # Sayfalama için page parametresini al
                     page = int(tk.request.args.get('page', 1))
                     url_params = {'q': self.q, 'sort': self.sort_by_selected}
                     return tk.h.pager(kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)), 
                                       self.item_count, ITEMS_PER_PAGE, current_page=page, url_params=url_params)
 
 
-                # item_count küçükse boş string dön
                 self.pager = _pager if self.item_count > ITEMS_PER_PAGE \
                              else (lambda **kw: '')
-        # ---------------------------------------------------------
 
         tk.c.page = Page(packages, total)
 
-        # Sıralama seçenekleri
         tracking_enabled = asbool(tk.config.get('ckan.tracking_enabled', False))
         tk.c.sort_by_options = [
             (tk._('Relevance'),        'score desc, metadata_modified desc'),
@@ -212,20 +192,31 @@ def edit_theme(slug):
     """Tema bilgilerini ve dataset atamalarını düzenler."""
     context = {'user': tk.c.user, 'ignore_auth': False}
 
-    # Yetki kontrolü: Sadece sysadmin veya tema yöneticileri düzenleyebilir
+    # Kullanıcının sysadmin olup olmadığını kontrol et
     is_sysadmin = tk.check_access('sysadmin', context)
     
-    if not is_sysadmin:
-        # sysadmin değilse, kullanıcı tema yöneticisi mi kontrol et
-        if not tk.c.userobj: # Eğer giriş yapmamışsa
-            raise NotAuthorized('Bu temayı düzenlemek için yetkiniz yok.')
-        
+    # Kullanıcının bu temadaki rolünü belirle
+    # Varsayılan olarak None, yetkisiz veya atanmamışsa
+    tk.c.user_theme_role_for_this_theme = None 
+    is_theme_authorized_for_edit = False
+
+    if is_sysadmin:
+        tk.c.user_theme_role_for_this_theme = 'admin' # Sysadmin ise 'admin' gibi davran
+        is_theme_authorized_for_edit = True
+    elif tk.c.userobj: # Sadece giriş yapmış kullanıcılar için tema rolünü kontrol et
         user_id = tk.c.userobj.id
         user_themes = tk.get_action('get_user_themes')(context, {'user_id': user_id})
-        is_theme_admin = any(t['theme_slug'] == slug and t['role'] == 'admin' for t in user_themes)
+        current_user_assignment = next((t for t in user_themes if t['theme_slug'] == slug), None)
         
-        if not is_theme_admin:
-            raise NotAuthorized('Bu temayı düzenlemek için yetkiniz yok.')
+        if current_user_assignment:
+            assigned_role = current_user_assignment['role']
+            tk.c.user_theme_role_for_this_theme = assigned_role
+            if assigned_role in ['admin', 'editor']: # Editörler ve adminler erişebilir
+                is_theme_authorized_for_edit = True
+
+    # Eğer kullanıcı tema için düzenleme yetkisine sahip değilse (sysadmin veya atanmış admin/editör değilse)
+    if not is_theme_authorized_for_edit:
+        raise NotAuthorized(_('Bu temayı düzenlemek için yetkiniz yok.'))
 
 
     if tk.request.method == 'GET':
@@ -268,6 +259,7 @@ def edit_theme(slug):
             tk.c.data = tk.request.form
 
     try:
+        # theme_data'yı doğru şekilde al
         tk.c.theme_data = tk.get_action('theme_category_show')({}, {'slug': slug})
         all_ds = tk.get_action('package_search')(context, {
             'rows':            1000,
