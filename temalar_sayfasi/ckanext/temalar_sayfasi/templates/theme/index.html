@@ -34,9 +34,9 @@
     
     <div id="theme-grid" class="theme-grid">
     </div>
-      {# --- YENİ EKLENEN BUTON --- #}
-  {# Bu butonu sadece admin yetkisine sahip kullanıcılar görür #}
-  {% if h.check_access('sysadmin') %}
+      {# --- YENİ TEMA EKLE BUTONU --- #}
+  {# Sadece dashboard sayfasında ve sadece sysadmin ise butonu göster #}
+  {% if c.is_dashboard and c.is_sysadmin %}
     <a href="{{ h.url_for('temalar_sayfasi.new') }}" class="add-theme-fab" title="{{ _('Yeni Tema Ekle') }}">
       <span class="fab-icon"><i class="fa fa-plus"></i></span>
       <span class="fab-text">{{ _('Yeni Tema Ekle') }}</span>
@@ -195,82 +195,92 @@ body, html, * {
   {{ super() }}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const apiUrl = '/api/3/action/theme_category_list';
+        // Kontrolcüden gelen 'themes' verisini kullanmak için
+        // Bu değişken sadece dashboard_themes view_func'tan gelir, index view_func'tan gelmez.
+        const themesFromController = {{ c.themes | tojson | safe if c.themes else '[]' }};
+        const isDashboardPage = {{ 'true' if c.is_dashboard else 'false' }};
+        const isSysadmin = {{ 'true' if c.is_sysadmin else 'false' }}; // Sysadmin bayrağını JavaScript'e aktar
+
         const statusEl = document.getElementById('status');
         const errorEl = document.getElementById('error');
         const gridEl = document.getElementById('theme-grid');
-        const showingThemeCountEl = document.getElementById('showing-theme-count'); // Yeni eklenen element
+        const showingThemeCountEl = document.getElementById('showing-theme-count');
 
-        // Tarih formatlama fonksiyonu
         function formatDate(dateString) {
             if (!dateString) return 'N/A';
             const options = { day: 'numeric', month: 'short', year: 'numeric' };
             return new Date(dateString).toLocaleDateString('tr-TR', options);
         }
 
-        fetch(apiUrl)
-            .then(response => {
-                if (!response.ok) { throw new Error(`Sunucuya ulaşılamadı. Durum: ${response.status}`); }
-                return response.json();
-            })
-            .then(data => {
-                statusEl.style.display = 'none';
+        function renderThemes(categories) {
+            statusEl.style.display = 'none';
 
-                if (data.success) {
-                    const categories = data.result;
-                    if (categories && categories.length > 0) {
-                        gridEl.innerHTML = ''; // Yükleniyor mesajını temizle
-                        showingThemeCountEl.textContent = categories.length; // Tema sayısını güncelle
+            if (categories && categories.length > 0) {
+                gridEl.innerHTML = '';
+                showingThemeCountEl.textContent = categories.length;
 
-                        categories.forEach(category => {
-                            // Ana kart div'ini oluştur
-                            const card = document.createElement('div');
-                            card.className = 'theme-card';
-                            // Arka plan rengini API'den gelen veriye göre ayarla
-                            card.style.backgroundColor = category.color || '#6c757d'; // Eğer renk yoksa gri bir renk kullan
+                categories.forEach(category => {
+                    const card = document.createElement('div');
+                    card.className = 'theme-card';
+                    card.style.backgroundColor = category.color || '#6c757d';
 
-                            // FontAwesome ikonunu oluştur
-                            const iconHtml = category.icon ? `<i class="fa fa-${category.icon}"></i>` : '';
+                    const iconHtml = category.icon ? `<i class="fa fa-${category.icon}"></i>` : '';
 
-                            // Kartın tüm HTML içeriğini oluştur
-                            card.innerHTML = `
-                                <div class="card-header">
-                                    <h3 class="title">${iconHtml} ${category.name}</h3>
-                                </div>
-                                <div class="card-body">
-                                    <p class="description">${category.description || 'Açıklama mevcut değil.'}</p>
-                                    <p class="meta-info">Son Güncelleme: ${formatDate(category.created_at)}</p>
-                                </div>
-                                <div class="card-stats">
-                                    <div class="stat-item">
-                                        <span class="number">${category.dataset_count}</span>
-                                        <span class="label">Veri Seti</span>
-                                    </div>
-                                </div>
-                                <div class="card-footer">
-                                    <a href="/temalar/${category.slug}" class="btn-details">Detaylı İncele</a>
-                                </div>
-                            `;
-                            
-                            // Oluşturulan kartı grid'e ekle
-                            gridEl.appendChild(card);
-                        });
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <h3 class="title">${iconHtml} ${category.name}</h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="description">${category.description || 'Açıklama mevcut değil.'}</p>
+                            <p class="meta-info">Son Güncelleme: ${formatDate(category.created_at)}</p>
+                        </div>
+                        <div class="card-stats">
+                            <div class="stat-item">
+                                <span class="number">${category.dataset_count || 0}</span>
+                                <span class="label">Veri Seti</span>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <a href="/temalar/${category.slug}" class="btn-details">Detaylı İncele</a>
+                        </div>
+                    `;
+                    gridEl.appendChild(card);
+                });
+            } else {
+                statusEl.textContent = isDashboardPage ? 
+                                       (isSysadmin ? 'Sistemde hiç tema bulunmuyor.' : 'Size atanmış bir tema bulunmuyor.') : 
+                                       'Gösterilecek tema bulunamadı.';
+                statusEl.style.display = 'block';
+                showingThemeCountEl.textContent = '0';
+            }
+        }
+
+        if (isDashboardPage) {
+            // Dashboard sayfasındayız, Python'dan gelen filtrelenmiş/tüm temaları kullan
+            renderThemes(themesFromController);
+        } else {
+            // Genel temalar sayfası, tüm temaları API'den çek
+            const apiUrl = '/api/3/action/theme_category_list';
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) { throw new Error(`Sunucuya ulaşılamadı. Durum: ${response.status}`); }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        renderThemes(data.result);
                     } else {
-                        statusEl.textContent = 'Gösterilecek tema bulunamadı.';
-                        statusEl.style.display = 'block';
-                        showingThemeCountEl.textContent = '0'; // Tema sayısını sıfırla
+                        throw new Error(data.error ? data.error.message : 'API bilinmeyen bir hata döndürdü.');
                     }
-                } else {
-                    throw new Error(data.error ? data.error.message : 'API bilinmeyen bir hata döndürdü.');
-                }
-            })
-            .catch(error => {
-                console.error('Hata:', error);
-                statusEl.style.display = 'none';
-                errorEl.textContent = `Bir hata oluştu: ${error.message}`;
-                errorEl.style.display = 'block';
-                showingThemeCountEl.textContent = '0'; // Hata durumunda da sıfırla
-            });
+                })
+                .catch(error => {
+                    console.error('Hata:', error);
+                    statusEl.style.display = 'none';
+                    errorEl.textContent = `Bir hata oluştu: ${error.message}`;
+                    errorEl.style.display = 'block';
+                    showingThemeCountEl.textContent = '0';
+                });
+        }
     });
   </script>
 {% endblock %}

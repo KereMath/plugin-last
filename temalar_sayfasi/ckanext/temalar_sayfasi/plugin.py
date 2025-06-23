@@ -3,11 +3,12 @@
 ckanext-temalar_sayfasi.plugin
 
 Tema (category) yönetimi:
-  • /temalar                – tema listesi
+  • /temalar                – tema listesi (HERKES TÜM TEMALARI GÖRÜR)
   • /temalar/yeni           – yeni tema oluştur
   • /temalar/<slug>         – tema detay + veri setleri
   • /temalar/<slug>/edit    – düzenle
   • /temalar/<slug>/delete  – sil
+  • /dashboard/temalar      – KULLANICIYA ÖZEL TEMA LİSTESİ (YENİ)
 """
 
 import logging
@@ -16,6 +17,10 @@ import ckan.plugins as p
 import ckan.plugins.toolkit as tk
 from ckan.plugins.toolkit import asbool
 from flask import Blueprint
+
+# Yeni eklenen modüller
+from ckan.logic import NotAuthorized # Yetkilendirme için
+import ckan.model as model # Kullanıcı modeline erişim için
 
 log = logging.getLogger(__name__)
 
@@ -30,12 +35,75 @@ ITEMS_PER_PAGE = int(tk.config.get('ckan.search.results_per_page', 20))
 # ----------------------------------------------------------------------
 
 def index():
-    """Tema listesi."""
+    """Genel Tema listesi. Herkes tüm temaları görür. Yeni Tema Ekle butonu burada görünmez."""
+    # Bu sayfada admin butonları (Yeni Tema Ekle) asla görünmeyecek.
+    # tk.c.is_dashboard bayrağını burada kullanmıyoruz, çünkü ayrı bir kontrol yapacağız.
+    # Herkesin tüm temaları görmesi için API çağrısı JS'de olacak.
     return tk.render('theme/index.html')
+
+def dashboard_themes():
+    """
+    Kullanıcıya özel tema listesi.
+    Sysadmin: Tüm temaları görür.
+    Diğerleri: Sadece atandığı temaları görür.
+    'Yeni Tema Ekle' butonu sadece sysadmin'lere görünür.
+    """
+    context = {'user': tk.c.user, 'ignore_auth': False} # ignore_auth false olmalı ki yetki kontrolü yapılsın
+    
+    # Dashboard sayfasına erişim kontrolü: Sadece giriş yapmış kullanıcılar
+    if not tk.c.user:
+        tk.h.flash_error(tk._('Bu sayfayı görüntülemek için giriş yapmalısınız.'))
+        return tk.h.redirect_to('/')
+
+    try:
+        is_sysadmin = tk.check_access('sysadmin', context)
+        tk.c.is_dashboard = True # Şablonda dashboard olduğunu belirtir
+        tk.c.is_sysadmin = is_sysadmin # Şablonda sysadmin yetkisini belirtir
+        
+        if is_sysadmin:
+            # Sysadmin ise tüm temaları getir
+            themes = tk.get_action('theme_category_list')(context, {})
+        else:
+            # Sysadmin değilse, kullanıcının atandığı temaları getir
+            user_id = tk.c.userobj.id # tk.c.userobj giriş yapmış kullanıcı için her zaman mevcut
+            
+            # Kullanıcının atandığı temaları getiren özel API eylemini kullan
+            user_assigned_themes_data = tk.get_action('get_user_themes')(context, {'user_id': user_id})
+            
+            # get_user_themes, sadece atanmış temaları ve rollerini döndürüyor
+            # Ancak biz tema detaylarını da (name, description vb.) isteyebiliriz.
+            # theme_slug'lar üzerinden theme_category_show çağırarak detayları alalım.
+            themes = []
+            for assignment in user_assigned_themes_data:
+                try:
+                    theme_detail = tk.get_action('theme_category_show')(context, {'slug': assignment['theme_slug']})
+                    # API'den dönen dataset_count gibi bilgileri de ekleyebiliriz
+                    themes.append(theme_detail) 
+                except tk.ObjectNotFound:
+                    log.warning(f"Dashboard için tema bulunamadı: {assignment['theme_slug']}")
+                    continue
+                except Exception as e:
+                    log.error(f"Dashboard için tema detayları yüklenirken hata: {assignment['theme_slug']} - {e}")
+                    continue
+        
+        tk.c.themes = themes # Şablona filtrelenmiş/tüm tema listesini aktar
+
+    except NotAuthorized as e:
+        tk.h.flash_error(tk._(str(e)))
+        return tk.h.redirect_to('/') # Yetkisizse ana sayfaya yönlendir (genel giriş yapılmadı kontrolünden sonra buraya düşmez)
+    except Exception as e:
+        log.error("Dashboard temaları yüklenirken genel hata: %s", e, exc_info=True)
+        tk.h.flash_error(tk._(f'Temaları yüklenirken beklenmeyen bir hata oluştu: {e}'))
+        tk.abort(500, tk._('Temaları yüklenirken beklenmeyen bir hata oluştu.'))
+
+    return tk.render('theme/index.html') # Aynı şablonu kullanabiliriz
 
 
 def new_theme():
-    """Yeni tema oluştur (GET/POST)."""
+    """Yeni tema oluştur (GET/POST). Yalnızca sysadmin erişebilir."""
+    context = {'user': tk.c.user, 'ignore_auth': False}
+    tk.check_access('sysadmin', context) # Sadece sysadminler erişebilir
+    
     tk.c.errors, tk.c.data = {}, {}
 
     if tk.request.method == 'POST':
@@ -47,9 +115,9 @@ def new_theme():
             'icon':        tk.request.form.get('icon'),
         }
         try:
-            tk.get_action('theme_category_create')({}, data_dict)
+            tk.get_action('theme_category_create')(context, data_dict) # Contexti ekle
             tk.h.flash_success(tk._('Tema başarıyla oluşturuldu.'))
-            return tk.h.redirect_to('temalar_sayfasi.index')
+            return tk.h.redirect_to('temalar_sayfasi.dashboard_index') # dashboard temalarına yönlendir
         except tk.ValidationError as e:
             tk.c.errors, tk.c.data = e.error_dict, data_dict
 
@@ -58,12 +126,12 @@ def new_theme():
 
 def read_theme(slug):
     """
-    /temalar/<slug> – Tema detayları.
+    /temalar/<slug> – Tema detayları. Herkesin erişebildiği detay sayfası.
     """
     try:
         log.info("Tema okuma isteği: %s", slug)
 
-        context    = {'user': tk.c.user, 'ignore_auth': True}
+        context    = {'user': tk.c.user, 'ignore_auth': True} # Okuma için yetkiyi göz ardı et
         theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})
         tk.c.theme_data = theme_data
 
@@ -74,8 +142,9 @@ def read_theme(slug):
             fq = "id:({})".format(" OR id:".join(dataset_ids))
             res = tk.get_action('package_search')(context, {
                 'fq':              fq,
-                'rows':            1000,
+                'rows':            ITEMS_PER_PAGE, # Sadece varsayılan sayıda göster
                 'include_private': True,
+                'start':           (tk.request.args.get('page', 1) - 1) * ITEMS_PER_PAGE # Sayfalama için
             })
             packages, total = res['results'], res['count']
 
@@ -88,8 +157,12 @@ def read_theme(slug):
                 self.sort_by_selected = tk.request.args.get('sort', '')
 
                 def _pager(**kw):
-                    q = kw.get('q', '')
-                    return tk.h.pager(q, self.item_count, ITEMS_PER_PAGE)
+                    # Sayfalama için page parametresini al
+                    page = int(tk.request.args.get('page', 1))
+                    url_params = {'q': self.q, 'sort': self.sort_by_selected}
+                    return tk.h.pager(kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)), 
+                                      self.item_count, ITEMS_PER_PAGE, current_page=page, url_params=url_params)
+
 
                 # item_count küçükse boş string dön
                 self.pager = _pager if self.item_count > ITEMS_PER_PAGE \
@@ -125,7 +198,23 @@ def read_theme(slug):
 
 def edit_theme(slug):
     """Tema bilgilerini ve dataset atamalarını düzenler."""
-    context = {'user': tk.c.user or tk.c.auth_user_obj.name}
+    context = {'user': tk.c.user, 'ignore_auth': False}
+
+    # Yetki kontrolü: Sadece sysadmin veya tema yöneticileri düzenleyebilir
+    is_sysadmin = tk.check_access('sysadmin', context)
+    
+    if not is_sysadmin:
+        # sysadmin değilse, kullanıcı tema yöneticisi mi kontrol et
+        if not tk.c.userobj: # Eğer giriş yapmamışsa
+            raise NotAuthorized('Bu temayı düzenlemek için yetkiniz yok.')
+        
+        user_id = tk.c.userobj.id
+        user_themes = tk.get_action('get_user_themes')(context, {'user_id': user_id})
+        is_theme_admin = any(t['theme_slug'] == slug and t['role'] == 'admin' for t in user_themes)
+        
+        if not is_theme_admin:
+            raise NotAuthorized('Bu temayı düzenlemek için yetkiniz yok.')
+
 
     if tk.request.method == 'GET':
         tk.c.data, tk.c.errors = {}, {}
@@ -185,7 +274,21 @@ def delete_theme(slug):
     if tk.request.method != 'POST':
         tk.abort(405, tk._('Bu sayfaya sadece POST metodu ile erişilebilir'))
 
-    context = {'user': tk.c.user or tk.c.auth_user_obj.name}
+    context = {'user': tk.c.user, 'ignore_auth': False} # Yetki kontrolü için ignore_auth False olmalı
+    
+    # Yetki kontrolü: Sadece sysadmin veya tema yöneticileri silebilir
+    is_sysadmin = tk.check_access('sysadmin', context)
+    if not is_sysadmin:
+        if not tk.c.userobj: # Eğer giriş yapmamışsa
+            raise NotAuthorized('Bu temayı silmek için yetkiniz yok.')
+
+        user_id = tk.c.userobj.id
+        user_themes = tk.get_action('get_user_themes')(context, {'user_id': user_id})
+        is_theme_admin = any(t['theme_slug'] == slug and t['role'] == 'admin' for t in user_themes)
+        
+        if not is_theme_admin:
+            raise NotAuthorized('Bu temayı silmek için yetkiniz yok.')
+
 
     try:
         tk.get_action('theme_category_delete')(context, {'slug': slug})
@@ -214,15 +317,22 @@ class TemalarSayfasiPlugin(p.SingletonPlugin):
     def get_blueprint(self):
         bp = Blueprint('temalar_sayfasi', __name__)
 
-        bp.add_url_rule('/temalar',              endpoint='index',
-                        view_func=index)
-        bp.add_url_rule('/temalar/yeni',         endpoint='new',
-                        view_func=new_theme,    methods=['GET', 'POST'])
-        bp.add_url_rule('/temalar/<slug>',       endpoint='read',
-                        view_func=read_theme)
-        bp.add_url_rule('/temalar/<slug>/edit',  endpoint='edit',
-                        view_func=edit_theme,   methods=['GET', 'POST'])
-        bp.add_url_rule('/temalar/<slug>/delete', endpoint='delete',
-                        view_func=delete_theme, methods=['POST'])
+        # Mevcut Tema Listesi (Herkes tümünü görür, Yeni Tema Ekle butonu burada GÖRÜNMEZ)
+        bp.add_url_rule('/temalar', endpoint='index', view_func=index)
+        
+        # Yeni Tema Oluştur (Sadece sysadminler erişebilir)
+        bp.add_url_rule('/temalar/yeni', endpoint='new', view_func=new_theme, methods=['GET', 'POST'])
+        
+        # Tema Detayları
+        bp.add_url_rule('/temalar/<slug>', endpoint='read', view_func=read_theme)
+        
+        # Tema Düzenle (Sysadmin veya tema adminleri)
+        bp.add_url_rule('/temalar/<slug>/edit', endpoint='edit', view_func=edit_theme, methods=['GET', 'POST'])
+        
+        # Tema Sil (Sysadmin veya tema adminleri)
+        bp.add_url_rule('/temalar/<slug>/delete', endpoint='delete', view_func=delete_theme, methods=['POST'])
+
+        # YENİ EKLENEN: Dashboard Tema Listesi (Kullanıcıya özel, sadece giriş yapmış, Yeni Tema Ekle butonu sadece sysadmin'e görünür)
+        bp.add_url_rule('/dashboard/temalar', endpoint='dashboard_index', view_func=dashboard_themes) 
 
         return bp
