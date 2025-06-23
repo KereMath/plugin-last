@@ -207,7 +207,8 @@ def edit_theme(slug):
     """Tema bilgilerini ve dataset atamalarını düzenler."""
     context = {'user': tk.c.user, 'ignore_auth': False}
 
-    is_sysadmin = tk.check_access('sysadmin', context)
+    is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin
+
     
     tk.c.user_theme_role_for_this_theme = None 
     is_theme_authorized_for_edit = False
