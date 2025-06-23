@@ -68,7 +68,7 @@ def dashboard_themes():
         tk.c.is_sysadmin = is_sysadmin # Şablonda sysadmin yetkisini belirtir
         
         if is_sysadmin:
-            # Sysadmin ise tüm temaları getir
+            # Sysadmin ise tüm temaları getir (theme_category_list doğrudan beklenen formatı döner)
             themes = tk.get_action('theme_category_list')(context, {})
         else:
             # Sysadmin değilse, kullanıcının atandığı temaları getir
@@ -77,18 +77,18 @@ def dashboard_themes():
             # Kullanıcının atandığı temaları getiren özel API eylemini kullan
             user_assigned_themes_data = tk.get_action('get_user_themes')(context, {'user_id': user_id})
             
-            # get_user_themes, sadece atanmış temaları ve rollerini döndürüyor
-            # Ancak biz tema detaylarını da (name, description vb.) isteyebiliriz.
-            # theme_slug'lar üzerinden theme_category_show çağırarak detayları alalım.
             themes = []
             for assignment in user_assigned_themes_data:
                 try:
-                    # theme_category_show, temaların detaylarını döndürmeli.
-                    # Eğer yetki sorunları yaşanıyorsa, burada context'e 'auth_user_obj': tk.c.userobj
-                    # gibi ek bilgiler eklemek gerekebilir, ancak standart olarak user yeterli olmalı.
+                    # theme_category_show, {'category': {...}, 'datasets': [...]} döndürür
                     theme_detail = tk.get_action('theme_category_show')(context, {'slug': assignment['theme_slug']})
-                    # API'den dönen dataset_count gibi bilgileri de ekleyebiliriz
-                    themes.append(theme_detail) 
+                    
+                    if theme_detail and theme_detail.get('category'):
+                        # Tema detaylarını 'category' anahtarından al ve normalize et
+                        normalized_theme = theme_detail['category']
+                        # dataset_count bilgisini de ekle (eğer theme_category_show döndürmüyorsa)
+                        normalized_theme['dataset_count'] = len(theme_detail.get('datasets', []))
+                        themes.append(normalized_theme)
                 except tk.ObjectNotFound:
                     log.warning(f"Dashboard için tema bulunamadı: {assignment['theme_slug']}")
                     continue
