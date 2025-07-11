@@ -478,16 +478,8 @@
           </div>
           <select id="available-datasets" multiple class="form-control dataset-list">
             {% set assigned_ids = c.theme_data.datasets|map(attribute='id')|list %}
-            {% set all_assigned_ids = [] %}
-            {% for theme in c.all_themes %}
-              {% for dataset in theme.datasets %}
-                {% if dataset.id not in all_assigned_ids %}
-                  {% set _ = all_assigned_ids.append(dataset.id) %}
-                {% endif %}
-              {% endfor %}
-            {% endfor %}
             {% for dataset in c.all_datasets %}
-              {% if dataset.id not in all_assigned_ids or dataset.id in assigned_ids %}
+              {% if dataset.id not in assigned_ids %}
                 <option value="{{ dataset.id }}">{{ dataset.title }}</option>
               {% endif %}
             {% endfor %}
