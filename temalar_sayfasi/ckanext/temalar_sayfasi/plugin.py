@@ -132,24 +132,26 @@ def read_theme(slug):
 
         context    = {'user': tk.c.user, 'ignore_auth': True}
         theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})
-        tk.c.theme_data = theme_data # theme_data'yı şablona aktar
         
         # DEBUG: Log the structure of theme_data
         log.info("Theme data structure: %s", theme_data)
         log.info("Theme data keys: %s", list(theme_data.keys()) if isinstance(theme_data, dict) else "Not a dict")
         
-        # CRITICAL FIX: Use 'tema' instead of 'theme' to avoid conflict with CKAN's theme assets
+        # Extract the tema object from theme_data
+        tema = None
         if theme_data and isinstance(theme_data, dict):
             if 'category' in theme_data:
-                tk.c.tema = theme_data['category']
+                tema = theme_data['category']
                 log.info("Set tema from category: %s", theme_data['category'])
             else:
                 # Fallback if structure is different - use the theme_data directly
-                tk.c.tema = theme_data
+                tema = theme_data
                 log.info("Set tema from theme_data directly: %s", theme_data)
-        else:
+        
+        if not tema:
             # Emergency fallback
-            tk.c.tema = {
+            tema = {
+                'name': slug.replace('-', ' ').title(),
                 'title': slug.replace('-', ' ').title(),
                 'description': 'Tema detayları',
                 'slug': slug
@@ -158,18 +160,16 @@ def read_theme(slug):
 
         # Kullanıcının sysadmin olup olmadığını kontrol et
         is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin
-        tk.c.is_sysadmin = is_sysadmin # Sysadmin durumunu şablona aktar
 
         # Kullanıcının bu temadaki rolünü belirle
         # Varsayılan olarak None, yetkisiz veya atanmamışsa
-        tk.c.user_theme_role_for_this_theme = None 
+        user_theme_role_for_this_theme = None 
         if not is_sysadmin and tk.c.userobj: # Sadece giriş yapmış sysadmin olmayan kullanıcılar için rolü kontrol et
             user_id = tk.c.userobj.id
             user_themes = tk.get_action('get_user_themes')(context, {'user_id': user_id})
             current_user_assignment = next((t for t in user_themes if t['theme_slug'] == slug), None)
             if current_user_assignment:
-                tk.c.user_theme_role_for_this_theme = current_user_assignment['role']
-
+                user_theme_role_for_this_theme = current_user_assignment['role']
 
         dataset_ids = [ds['id'] for ds in theme_data.get('datasets', [])]
 
@@ -204,24 +204,36 @@ def read_theme(slug):
                 self.pager = _pager if self.item_count > ITEMS_PER_PAGE \
                              else (lambda **kw: '')
 
-        tk.c.page = Page(packages, total)
+        page = Page(packages, total)
 
         tracking_enabled = asbool(tk.config.get('ckan.tracking_enabled', False))
-        tk.c.sort_by_options = [
+        sort_by_options = [
             (tk._('Relevance'),        'score desc, metadata_modified desc'),
             (tk._('Name Ascending'),   'title_string asc'),
             (tk._('Name Descending'),  'title_string desc'),
             (tk._('Last Modified'),    'metadata_modified desc'),
         ]
         if tracking_enabled:
-            tk.c.sort_by_options.append((tk._('Popular'), 'views_recent desc'))
+            sort_by_options.append((tk._('Popular'), 'views_recent desc'))
 
-        tk.c.q = tk.request.args.get('q', '')
-        tk.c.sort_by_selected = tk.request.args.get('sort', '')
-        tk.c.search_facets = {}
-        tk.c.slug = slug  # Add slug to template context
+        q = tk.request.args.get('q', '')
+        sort_by_selected = tk.request.args.get('sort', '')
+        search_facets = {}
 
-        return tk.render('theme/theme_read.html')
+        # Pass all variables to template via extra_vars
+        return tk.render('theme/theme_read.html', extra_vars={
+            'tema': tema,
+            'theme_data': theme_data,
+            'datasets': packages,
+            'page': page,
+            'is_sysadmin': is_sysadmin,
+            'user_theme_role_for_this_theme': user_theme_role_for_this_theme,
+            'sort_by_options': sort_by_options,
+            'q': q,
+            'sort_by_selected': sort_by_selected,
+            'search_facets': search_facets,
+            'slug': slug,
+        })
 
     except tk.ObjectNotFound:
         tk.abort(404, tk._('Tema bulunamadı'))
