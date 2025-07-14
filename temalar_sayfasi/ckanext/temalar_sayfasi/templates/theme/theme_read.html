@@ -89,7 +89,7 @@
 
       {# Sayfalama kontrolleri - Bu kalacak #}
       {% if c.page.pager %}
-        {{ c.page.pager(q=c.q) }}
+        {{ c.page.pager(q=c.q) | safe }}
       {% endif %}
     </div>
   </div>
