@@ -21,6 +21,9 @@ from flask import Blueprint
 # Yeni eklenen modüller
 from ckan.logic import NotAuthorized # Yetkilendirme için
 import ckan.model as model # Kullanıcı modeline erişim için
+import ckan.lib.uploader as uploader # Dosya yükleme için YENİ EKLENDİ
+import ckan.common # Dosya yükleme için YENİ EKLENDİ
+
 
 # Explicitly import ckan.lib.helpers and assign pager_url to tk.h
 # This ensures tk.h.pager_url is available for the Page class.
@@ -110,20 +113,45 @@ def new_theme():
     tk.c.errors, tk.c.data = {}, {}
 
     if tk.request.method == 'POST':
+        # Dosya yükleyiciyi başlat
+        upload = uploader.get_uploader('theme_background') # 'theme_background' gibi özel bir prefix kullanabiliriz
+        
         data_dict = {
             'slug':        tk.request.form.get('slug'),
             'name':        tk.request.form.get('name'),
             'description': tk.request.form.get('description'),
             'color':       tk.request.form.get('color'),
             'icon':        tk.request.form.get('icon'),
-            'background_image': tk.request.form.get('background_image'), # YENİ EKLENDİ
+            # 'background_image' doğrudan formdan gelmeyecek, dosyadan alacağız
         }
+
+        # Yüklenen dosyayı kontrol et
+        if 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
+            uploaded_file = tk.request.files['background_image_upload']
+            # Dosyayı kaydet ve yolunu al
+            upload.upload(uploaded_file, uploader.get_max_image_size()) # get_max_image_size() CKAN'ın image boyutu limitini kullanır
+            data_dict['background_image'] = upload.filename # Kaydedilen dosyanın yolunu background_image alanına ata
+        else:
+            data_dict['background_image'] = None # Dosya yüklenmediyse boş bırak
+
+
         try:
             tk.get_action('theme_category_create')(context, data_dict)
             tk.h.flash_success(tk._('Tema başarıyla oluşturuldu.'))
             return tk.h.redirect_to('temalar_sayfasi.dashboard_index')
         except tk.ValidationError as e:
             tk.c.errors, tk.c.data = e.error_dict, data_dict
+            # Hata durumunda yüklenen dosyayı temizle
+            if 'background_image' in data_dict and data_dict['background_image']:
+                 upload.clear(data_dict['background_image'])
+        except Exception as e:
+            log.error(f"Yeni tema oluşturulurken hata: {e}", exc_info=True)
+            tk.h.flash_error(tk._(f'Tema oluşturulurken beklenmeyen bir hata oluştu: {e}'))
+            tk.c.data = data_dict # Verileri formda tut
+            # Hata durumunda yüklenen dosyayı temizle
+            if 'background_image' in data_dict and data_dict['background_image']:
+                 upload.clear(data_dict['background_image'])
+
 
     return tk.render('theme/new_theme.html')
 
@@ -287,14 +315,41 @@ def edit_theme(slug):
         tk.c.data, tk.c.errors = {}, {}
 
     if tk.request.method == 'POST':
+        # Dosya yükleyiciyi başlat
+        upload = uploader.get_uploader('theme_background')
+        
+        update_data = {
+            'slug':        slug,
+            'name':        tk.request.form.get('name'),
+            'description': tk.request.form.get('description'),
+            'color':       tk.request.form.get('color'),
+            'icon':        tk.request.form.get('icon'),
+            # 'background_image' doğrudan formdan gelmeyecek, dosyadan alacağız
+        }
+
+        # Mevcut tema bilgisini al (görsel yolunu bilmek için)
+        current_theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})['category']
+        current_background_image_path = current_theme_data.get('background_image')
+
+        # Görseli kaldırıp kaldırmadığımızı kontrol et
+        if tk.request.form.get('clear_background_image') == 'true':
+            update_data['background_image'] = None # Veritabanında boş olarak kaydet
+            if current_background_image_path:
+                upload.clear(current_background_image_path) # Eski dosyayı sil
+        # Yeni bir görsel yüklenip yüklenmediğini kontrol et
+        elif 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
+            uploaded_file = tk.request.files['background_image_upload']
+            # Eski görsel varsa önce onu sil
+            if current_background_image_path:
+                upload.clear(current_background_image_path)
+            # Yeni dosyayı kaydet ve yolunu al
+            upload.upload(uploaded_file, uploader.get_max_image_size())
+            update_data['background_image'] = upload.filename # Kaydedilen dosyanın yolunu ata
+        else:
+            # Ne yeni bir dosya yüklendi ne de mevcut dosya silindi, o zaman mevcut yolu koru
+            update_data['background_image'] = current_background_image_path
+
         try:
-            update_data = {
-                'slug':        slug,
-                'name':        tk.request.form.get('name'),
-                'description': tk.request.form.get('description'),
-                'color':       tk.request.form.get('color'),
-                'icon':        tk.request.form.get('icon'),
-            }
             tk.get_action('theme_category_update')(context, update_data)
 
             new_ids = set(tk.request.form.getlist('dataset_ids'))
@@ -316,9 +371,17 @@ def edit_theme(slug):
         except tk.ValidationError as e:
             tk.c.errors, tk.c.data = e.error_dict, tk.request.form
             tk.h.flash_error(str(e))
+            # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
+            if 'background_image' in update_data and update_data['background_image'] and tk.request.files['background_image_upload'].filename:
+                 upload.clear(update_data['background_image'])
         except Exception as e:
+            log.error(f"Tema güncellenirken hata: {e}", exc_info=True)
             tk.h.flash_error(tk._(f'Bir hata oluştu: {e}'))
             tk.c.data = tk.request.form
+            # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
+            if 'background_image' in update_data and update_data['background_image'] and tk.request.files['background_image_upload'].filename:
+                 upload.clear(update_data['background_image'])
+
 
     try:
         tk.c.theme_data = tk.get_action('theme_category_show')({}, {'slug': slug})
@@ -355,13 +418,24 @@ def delete_theme(slug):
 
 
     try:
+        # Tema silinmeden önce ilişkili görseli de silelim
+        current_theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})['category']
+        background_image_path = current_theme_data.get('background_image')
+        
         tk.get_action('theme_category_delete')(context, {'slug': slug})
+        
+        # Eğer bir arka plan görseli varsa, onu da temizle
+        if background_image_path:
+            upload = uploader.get_uploader('theme_background')
+            upload.clear(background_image_path)
+
         tk.h.flash_success(tk._('Tema başarıyla silindi.'))
         return tk.h.redirect_to('temalar_sayfasi.index')
     except tk.ValidationError as e:
         tk.h.flash_error(str(e))
         return tk.h.redirect_to('temalar_sayfasi.edit', slug=slug)
     except Exception as e:
+        log.error(f"Tema silinirken hata: {e}", exc_info=True)
         tk.h.flash_error(tk._(f'Tema silinirken bir hata oluştu: {e}'))
         return tk.h.redirect_to('temalar_sayfasi.edit', slug=slug)
 
