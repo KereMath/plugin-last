@@ -43,6 +43,19 @@
     body, html, * {
         font-family: 'Montserrat', sans-serif !important;
     }
+
+    /* Tema başlığının arkasındaki arka plan görselini göstermek için stil */
+    {% if c.theme_data.category.background_image %}
+    .module {
+      background-image: url('/uploads/theme_background/{{ c.theme_data.category.background_image }}');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      /* Opacity değeri burada uygulanıyor */
+      opacity: {{ c.theme_data.category.opacity | default(1.0) }};
+      transition: opacity 0.3s ease-in-out; /* Şeffaflık değişimine yumuşak geçiş */
+    }
+    {% endif %}
   </style>
 {% endblock %}
 
@@ -89,5 +102,3 @@
     </div>
   </div>
 {% endblock %}
-
-
