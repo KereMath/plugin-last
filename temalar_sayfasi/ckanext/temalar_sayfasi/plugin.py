@@ -293,7 +293,6 @@ def read_theme(slug): # <-- slug is received here
         log.error("Tema yüklenirken hata: %s", e, exc_info=True)
         tk.h.flash_error(tk._(f'Tema yüklenirken bir hata oluştu: {e}'))
         tk.abort(500, tk._('Tema yüklenirken beklenmeyen bir hata oluştu.'))
-
 def edit_theme(slug):
     """Tema bilgilerini ve dataset atamalarını düzenler."""
     context = {'user': tk.c.user, 'ignore_auth': False}
@@ -345,42 +344,50 @@ def edit_theme(slug):
         if tk.request.form.get('clear_background_image') == 'true':
             update_data['background_image'] = None # Veritabanında boş olarak kaydet
             should_delete_old_image = True
+            log.info("Clear image checkbox checked for slug: %s", slug)
         # Yeni bir görsel yüklenip yüklenmediğini kontrol et
         elif 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
             uploaded_file = tk.request.files['background_image_upload']
+            log.info("New image uploaded for slug: %s", slug)
 
-            # Handle the old image deletion explicitly before uploading the new one
-            # The 'clear' attribute error suggests uploader.upload() internally tries to clear
-            # based on an attribute that might not exist in newer CKAN versions.
-            # We will handle the deletion manually here to ensure it happens.
-            if current_background_image_path:
-                full_old_image_path = os.path.join(tk.config.get('ckan.storage_path'), current_background_image_path)
-                try:
-                    if os.path.exists(full_old_image_path):
-                        os.remove(full_old_image_path)
-                        log.info("Eski arka plan görseli silindi (yeni yüklenmeden önce): %s", full_old_image_path)
-                except OSError as e:
-                    log.warning("Eski arka plan görseli silinirken hata oluştu: %s - %s", full_old_image_path, e)
-
+            # --- Critical Change: Explicitly set upload.clear = False if it doesn't exist ---
             upload = uploader.get_uploader('theme_background')
-            upload.upload(uploaded_file) # This line should now work without the 'clear' error
-            update_data['background_image'] = upload.filename
-            uploaded_new_file = True # Set flag
+            # Check if 'clear' attribute exists on the uploader instance
+            if not hasattr(upload, 'clear'):
+                upload.clear = False # Set it to False to prevent the AttributeError
+                log.debug("Set 'clear' attribute to False on uploader instance.")
+
+            try:
+                # The 'upload' method might still handle some internal clearing,
+                # but by setting 'clear' to False, we avoid the AttributeError.
+                upload.upload(uploaded_file)
+                update_data['background_image'] = upload.filename
+                uploaded_new_file = True # Set flag
+                should_delete_old_image = True # A new file implies old one should be deleted
+            except Exception as upload_err:
+                log.error(f"Error during file upload for theme {slug}: {upload_err}", exc_info=True)
+                tk.h.flash_error(tk._(f'Görsel yüklenirken bir hata oluştu: {upload_err}'))
+                # Re-render form with current data and errors
+                tk.c.errors, tk.c.data = {'background_image_upload': [str(upload_err)]}, tk.request.form
+                # Ensure existing image path is retained if upload failed, so it doesn't disappear from form
+                update_data['background_image'] = current_background_image_path
+                return tk.render('theme/edit_theme.html')
         else:
             # Ne yeni bir dosya yüklendi ne de mevcut dosya silindi, o zaman mevcut yolu koru
             update_data['background_image'] = current_background_image_path
+            log.info("No image changes for slug: %s, retaining existing path.", slug)
 
 
-        # If the 'clear_background_image' checkbox was checked, and there was an old image, delete it.
-        # This block is for when the user explicitly wants to remove the image without uploading a new one.
-        if should_delete_old_image and current_background_image_path and not uploaded_new_file:
+        # Perform deletion of the old image if flagged and a path exists
+        # This block now handles deletion for both 'clear' action and 'new upload' action.
+        if should_delete_old_image and current_background_image_path:
             full_old_image_path = os.path.join(tk.config.get('ckan.storage_path'), current_background_image_path)
             try:
                 if os.path.exists(full_old_image_path): # Check if file exists before trying to delete
                     os.remove(full_old_image_path)
                     log.info("Eski arka plan görseli silindi: %s", full_old_image_path)
                 else:
-                    log.info("Silinecek eski arka plan görseli bulunamadı: %s", full_old_image_path)
+                    log.info("Silinecek eski arka plan görseli bulunamadı veya zaten silinmiş: %s", full_old_image_path)
             except OSError as e:
                 log.warning("Eski arka plan görseli silinirken hata oluştu: %s - %s", full_old_image_path, e)
 
@@ -408,7 +415,7 @@ def edit_theme(slug):
             tk.c.errors, tk.c.data = e.error_dict, tk.request.form
             tk.h.flash_error(str(e))
             # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
-            if uploaded_new_file and 'background_image' in update_data and update_data['background_image']: # Use the flag here
+            if uploaded_new_file and 'background_image' in update_data and update_data['background_image']:
                 full_image_path = os.path.join(tk.config.get('ckan.storage_path'), update_data['background_image'])
                 try:
                     if os.path.exists(full_image_path):
@@ -421,7 +428,7 @@ def edit_theme(slug):
             tk.h.flash_error(tk._(f'Bir hata oluştu: {e}'))
             tk.c.data = tk.request.form
             # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
-            if uploaded_new_file and 'background_image' in update_data and update_data['background_image']: # Use the flag here
+            if uploaded_new_file and 'background_image' in update_data and update_data['background_image']:
                 full_image_path = os.path.join(tk.config.get('ckan.storage_path'), update_data['background_image'])
                 try:
                     if os.path.exists(full_image_path):
