@@ -291,7 +291,6 @@ def read_theme(slug):
                         current_page=current_page_from_request,
                         q=q_param
                     )
-                
                 self.pager = _pager_callable if self.item_count > ITEMS_PER_PAGE else (lambda **kw: '')
                 
                 # END of Page class refactor
