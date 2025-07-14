@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+ckanext-temalar_sayfasi.plugin
+
+Tema (category) yönetimi:
+  • /temalar                – tema listesi (HERKES TÜM TEMALARI GÖRÜR)
+  • /temalar/yeni           – yeni tema oluştur
+  • /temalar/<slug>         – tema detay + veri setleri
+  • /temalar/<slug>/edit    – düzenle
+  • /temalar/<slug>/delete  – sil
+  • /dashboard/temalar      – KULLANICIYA ÖZEL TEMA LİSTESİ (YENİ)
+"""
+
 import logging
 import os # Added for file path operations
 
@@ -285,49 +298,6 @@ def read_theme(slug): # <-- slug is received here
         tk.h.flash_error(tk._(f'Tema yüklenirken bir hata oluştu: {e}'))
         tk.abort(500, tk._('Tema yüklenirken beklenmeyen bir hata oluştu.'))
 
-Oh no, we have a new error now, but it's a good kind of new error because it shows progress!
-
-Understanding the New Error: 'dict object' has no attribute 'category'
-Your latest error log:
-
-jinja2.exceptions.UndefinedError: 'dict object' has no attribute 'category'
-This error specifically points to line 3 in your edit_theme.html template:
-
-HTML
-
-{% block subtitle %}{{ _('Tema Konfigürasyonu') }}: {{ c.theme_data.category.name }}{% endblock %}
-It's saying that c.theme_data is a dictionary object, but you're trying to access an attribute named category on it (e.g., c.theme_data.category). Dictionaries use [key] for access, not .attribute.
-
-Let's look at how c.theme_data is set in your plugin.py's edit_theme function (specifically in the GET request block):
-
-Python
-
-        try:
-            tk.c.theme_data = tk.get_action('theme_category_show')({}, {'slug': slug})['category']
-            tk.c.data = tk.c.theme_data # Formu mevcut verilerle doldur
-            tk.c.errors = {}
-        except tk.ObjectNotFound:
-            tk.abort(404, tk._('Tema bulunamadı'))
-        # ...
-Here's the problem:
-tk.get_action('theme_category_show')(...) already returns a dictionary that contains the theme data. Your action theme_category_show wraps the actual theme data inside a category key (e.g., {'category': {...theme_details...}, 'datasets': [...]}).
-
-By adding ['category'] at the end of the line:
-tk.c.theme_data = tk.get_action('theme_category_show')({}, {'slug': slug})['category']
-
-You are effectively setting tk.c.theme_data to just the dictionary of theme details (e.g., {'id': 8, 'slug': 'yesil-veriler', 'name': 'Yeşil Veriler', ...}). So, when Jinja tries to do c.theme_data.category.name, it fails because c.theme_data is the category dictionary itself, not a wrapper around it.
-
-The Fix: Adjusting c.theme_data Assignment in plugin.py
-You need to assign the full response of theme_category_show to tk.c.theme_data so that your templates can access c.theme_data.category.name and c.theme_data.datasets.
-
-Here's the corrected edit_theme function. The key change is in the GET request handling and the try block before rendering the template after a POST.
-
-Python
-
-# In ckanext-temalar_sayfasi/plugin.py
-
-# ... (other code before edit_theme) ...
-
 def edit_theme(slug):
     """Tema bilgilerini ve dataset atamalarını düzenler."""
     context = {'user': tk.c.user, 'ignore_auth': False}
@@ -361,8 +331,8 @@ def edit_theme(slug):
         try:
             # --- FIX: Assign the full theme_data response, not just ['category'] ---
             theme_full_data = tk.get_action('theme_category_show')({}, {'slug': slug})
-            tk.c.theme_data = theme_full_data
-            tk.c.data = theme_full_data['category'] # Assign just the category dict for form pre-population
+            tk.c.theme_data = theme_full_data # This is the full dict: {'category': {...}, 'datasets': [...]}
+            tk.c.data = theme_full_data['category'] # This is just the theme properties for form pre-population
             tk.c.errors = {}
             log.info(f"edit_theme (GET): Loaded theme data for {slug}. Category name: {tk.c.theme_data['category']['name']}")
         except tk.ObjectNotFound:
@@ -390,9 +360,6 @@ def edit_theme(slug):
         }
 
         # Retrieve current_theme_data for existing image path *before* potential upload
-        # Make sure this is the full response, not just ['category'] if you need datasets too later.
-        # However, for just 'background_image', `current_theme_data.get('background_image')` would be fine
-        # if the action always returns the simple dict. Let's make it consistent.
         current_theme_full_data = tk.get_action('theme_category_show')(context, {'slug': slug})
         current_background_image_path = current_theme_full_data['category'].get('background_image')
 
@@ -413,6 +380,7 @@ def edit_theme(slug):
                 log.debug("edit_theme (POST): Set 'clear' attribute to False on uploader instance.")
 
             try:
+                # This is where the file gets saved to the storage path
                 upload.upload(uploaded_file)
                 update_data['background_image'] = upload.filename
                 uploaded_new_file = True
@@ -429,6 +397,7 @@ def edit_theme(slug):
                 tk.c.all_datasets = all_ds['results']
                 return tk.render('theme/edit_theme.html')
         else:
+            # No new file uploaded, and 'clear' not checked. Retain existing path.
             update_data['background_image'] = current_background_image_path
             log.info(f"edit_theme (POST): No image changes for slug: {slug}, retaining existing path: {current_background_image_path}.")
 
@@ -447,9 +416,11 @@ def edit_theme(slug):
 
 
         try:
+            # Call the action to update theme data in the database
             tk.get_action('theme_category_update')(context, update_data)
             log.info(f"edit_theme (POST): Called theme_category_update for {slug} with background_image: {update_data.get('background_image')}")
 
+            # Handle dataset assignments (unchanged logic)
             new_ids = set(tk.request.form.getlist('dataset_ids'))
             current = tk.get_action('theme_category_show')(context, {'slug': slug})
             old_ids = set(ds['id'] for ds in current.get('datasets', []))
@@ -500,6 +471,7 @@ def edit_theme(slug):
             all_ds = tk.get_action('package_search')(context, {'rows': 1000, 'include_private': True})
             tk.c.all_datasets = all_ds['results']
             return tk.render('theme/edit_theme.html')
+
 
 def delete_theme(slug):
     """Tema sil (yalnızca POST)."""
