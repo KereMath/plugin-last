@@ -342,7 +342,7 @@ def edit_theme(slug):
             if current_background_image_path:
                 upload.clear(current_background_image_path)
             # Yeni dosyayı kaydet ve yolunu al
-            upload.upload(uploaded_file) # uploader.get_max_image_size() KALDIRILDI
+            upload.upload(uploaded_file, uploader.get_max_image_size())
             update_data['background_image'] = upload.filename # Kaydedilen dosyanın yolunu ata
         else:
             # Ne yeni bir dosya yüklendi ne de mevcut dosya silindi, o zaman mevcut yolu koru
@@ -394,6 +394,7 @@ def edit_theme(slug):
         tk.abort(404, tk._('Tema bulunamadı'))
     except Exception as e:
         tk.abort(500, tk._(f"Sayfa yüklenirken bir hata oluştu: {e}"))
+
 
 def delete_theme(slug):
     """Tema sil (yalnızca POST)."""
