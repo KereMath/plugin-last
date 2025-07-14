@@ -96,12 +96,3 @@
 {% endblock %}
 
 
-{% block scripts %}
-  {{ super() }}
-  <script>
-    // Sayfadaki tüm bootstrap tooltip'lerini (ipuçlarını) etkinleştir
-    $(function () {
-      $('[data-toggle="tooltip"]').tooltip()
-    })
-  </script>
-{% endblock %}
