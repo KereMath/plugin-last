@@ -383,6 +383,16 @@ def edit_theme(slug):
         log.info(f"edit_theme (POST): Initializing temp_data_dict['background_image'] with: {temp_data_dict['background_image']}")
         # CRITICAL FIX END
 
+        # FIX: Add hidden field value if present and no new upload
+        # This handles the case where the form includes a hidden field with the existing image path
+        if (not tk.request.files.get('background_image_upload') or 
+            not tk.request.files['background_image_upload'].filename):
+            # Check if there's a hidden field value from the form
+            form_background_image = tk.request.form.get('background_image')
+            if form_background_image and form_background_image != current_background_image_path:
+                # This might happen if the form is resubmitted after validation error
+                temp_data_dict['background_image'] = form_background_image
+                log.info(f"edit_theme (POST): Using form's hidden field value: {form_background_image}")
 
         # Handle file upload: directly assign the file object if present
         if 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
@@ -477,7 +487,6 @@ def edit_theme(slug):
             all_ds = tk.get_action('package_search')(context, {'rows': 1000, 'include_private': True})
             tk.c.all_datasets = all_ds['results']
             return tk.render('theme/edit_theme.html')
-
 
 def delete_theme(slug):
     """Tema sil (yalnızca POST)."""
