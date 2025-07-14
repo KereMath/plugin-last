@@ -26,10 +26,7 @@ import ckan.common
 
 
 import ckan.lib.helpers as _helpers
-# --- ADDED/ENSURED THESE HELPER ASSIGNMENTS ---
 tk.h.pager_url = _helpers.pager_url
-tk.h.image_url = _helpers.image_url
-# ---------------------------------------------
 
 
 log = logging.getLogger(__name__)
@@ -415,7 +412,7 @@ def edit_theme(slug):
                 upload.upload() # This method uses self.filepath (set by update_data_dict) to save the file
                 log.info(f"edit_theme (POST): File physically uploaded to storage path. Final filename: {upload.filename}")
             else:
-                log.info("edit_theme (POST): No file to physically upload (either no new file or cleared).")
+                log.info("edit_theme (POST): No new file to physically upload (either no new file or it was cleared).")
 
             # data_dict['background_image'] now holds the *correct* path that should be saved to DB
             # (either new path, None if cleared, or old path if no changes)
