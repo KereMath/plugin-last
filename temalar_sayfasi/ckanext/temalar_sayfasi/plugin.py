@@ -17,6 +17,8 @@ import ckan.plugins as p
 import ckan.plugins.toolkit as tk
 from ckan.plugins.toolkit import asbool
 from flask import Blueprint
+from ckan.lib.helpers import Page
+import ckan.lib.helpers as h
 
 # Yeni eklenen modüller
 from ckan.logic import NotAuthorized # Yetkilendirme için
@@ -131,6 +133,13 @@ def read_theme(slug):
         context    = {'user': tk.c.user, 'ignore_auth': True}
         theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})
         tk.c.theme_data = theme_data # theme_data'yı şablona aktar
+        
+        # CRITICAL FIX: Template expects 'theme' variable, not 'theme_data'
+        if theme_data and 'category' in theme_data:
+            tk.c.theme = theme_data['category']
+        else:
+            # Fallback if structure is different
+            tk.c.theme = theme_data
 
         # Kullanıcının sysadmin olup olmadığını kontrol et
         is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin
@@ -156,7 +165,7 @@ def read_theme(slug):
                 'fq':              fq,
                 'rows':            ITEMS_PER_PAGE,
                 'include_private': True,
-                'start':           (tk.request.args.get('page', 1) - 1) * ITEMS_PER_PAGE
+                'start':           (int(tk.request.args.get('page', 1)) - 1) * ITEMS_PER_PAGE
             })
             packages, total = res['results'], res['count']
 
@@ -168,11 +177,23 @@ def read_theme(slug):
                 self.sort_by_selected = tk.request.args.get('sort', '')
 
                 def _pager(**kw):
-                    page = int(tk.request.args.get('page', 1))
-                    url_params = {'q': self.q, 'sort': self.sort_by_selected}
-                    return tk.h.pager(kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)), 
-                                      self.item_count, ITEMS_PER_PAGE, current_page=page, url_params=url_params)
-
+                    try:
+                        page = int(tk.request.args.get('page', 1))
+                        url_params = {'q': self.q, 'sort': self.sort_by_selected}
+                        
+                        # Use CKAN's built-in Page class for proper pagination
+                        from ckan.lib.helpers import Page as CKANPage
+                        page_obj = CKANPage(
+                            collection=items,
+                            page=page,
+                            url=kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)),
+                            items_per_page=ITEMS_PER_PAGE,
+                            item_count=item_count
+                        )
+                        return page_obj.pager(**kw)
+                    except Exception as e:
+                        log.error(f"Pager error: {e}")
+                        return ""
 
                 self.pager = _pager if self.item_count > ITEMS_PER_PAGE \
                              else (lambda **kw: '')
@@ -192,6 +213,7 @@ def read_theme(slug):
         tk.c.q = tk.request.args.get('q', '')
         tk.c.sort_by_selected = tk.request.args.get('sort', '')
         tk.c.search_facets = {}
+        tk.c.slug = slug  # Add slug to template context
 
         return tk.render('theme/theme_read.html')
 
@@ -228,7 +250,7 @@ def edit_theme(slug):
                 is_theme_authorized_for_edit = True
 
     if not is_theme_authorized_for_edit:
-        raise NotAuthorized(_('Bu temayı düzenlemek için yetkiniz yok.'))
+        raise NotAuthorized('Bu temayı düzenlemek için yetkiniz yok.')
 
 
     if tk.request.method == 'GET':
@@ -321,10 +343,48 @@ def delete_theme(slug):
 class TemalarSayfasiPlugin(p.SingletonPlugin):
     p.implements(p.IBlueprint)
     p.implements(p.IConfigurer)
+    p.implements(p.ITemplateHelpers)
 
     # templates/ klasörünü sisteme tanıt
     def update_config(self, config_):
         tk.add_template_directory(config_, 'templates')
+
+    def get_helpers(self):
+        """Template helpers"""
+        return {
+            'temalar_sayfasi_pager': self._pager,
+        }
+
+    def _pager(self, **kw):
+        """Custom pager helper that handles pagination for themes"""
+        try:
+            # Get the current slug from the URL or kwargs
+            slug = kw.get('slug', '')
+            
+            # Build base URL for pagination
+            base_url = kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug))
+            
+            # Get pagination parameters
+            page = kw.get('page', 1)
+            per_page = kw.get('per_page', 20)
+            total = kw.get('total', 0)
+            
+            # Create Page object for pagination
+            from ckan.lib.helpers import Page as CKANPage
+            page_obj = CKANPage(
+                collection=[],  # We don't need the actual collection here
+                page=page,
+                url=base_url,
+                items_per_page=per_page,
+                item_count=total
+            )
+            
+            return page_obj.pager(**kw)
+            
+        except Exception as e:
+            log.error(f"Pager helper error: {e}")
+            # Return empty string if pager fails
+            return ""
 
     def get_blueprint(self):
         bp = Blueprint('temalar_sayfasi', __name__)

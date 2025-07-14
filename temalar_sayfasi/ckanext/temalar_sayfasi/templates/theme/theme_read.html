@@ -48,14 +48,8 @@
 
         <!-- Fixed pagination section -->
         <div class="pagination-wrapper">
-          {% if c.page.page_count > 1 %}
-            {{ h.temalar_sayfasi_pager(
-                base_url=h.url_for('temalar_sayfasi.read', slug=c.slug),
-                page=c.page.page,
-                per_page=c.page.items_per_page,
-                total=c.page.item_count,
-                q=c.q
-            ) }}
+          {% if c.page.item_count > c.page.items|length %}
+            {{ c.page.pager(q=c.q) }}
           {% endif %}
         </div>
       {% else %}
