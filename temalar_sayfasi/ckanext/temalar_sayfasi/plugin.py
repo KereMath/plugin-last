@@ -129,7 +129,7 @@ def new_theme():
         if 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
             uploaded_file = tk.request.files['background_image_upload']
             # Dosyayı kaydet ve yolunu al
-            upload.upload(uploaded_file, uploader.get_max_image_size()) # get_max_image_size() CKAN'ın image boyutu limitini kullanır
+            upload.upload(uploaded_file) # uploader.get_max_image_size() KALDIRILDI
             data_dict['background_image'] = upload.filename # Kaydedilen dosyanın yolunu background_image alanına ata
         else:
             data_dict['background_image'] = None # Dosya yüklenmediyse boş bırak
@@ -154,7 +154,6 @@ def new_theme():
 
 
     return tk.render('theme/new_theme.html')
-
 
 def read_theme(slug): # <-- slug is received here
     """
@@ -343,7 +342,7 @@ def edit_theme(slug):
             if current_background_image_path:
                 upload.clear(current_background_image_path)
             # Yeni dosyayı kaydet ve yolunu al
-            upload.upload(uploaded_file, uploader.get_max_image_size())
+            upload.upload(uploaded_file) # uploader.get_max_image_size() KALDIRILDI
             update_data['background_image'] = upload.filename # Kaydedilen dosyanın yolunu ata
         else:
             # Ne yeni bir dosya yüklendi ne de mevcut dosya silindi, o zaman mevcut yolu koru
@@ -395,7 +394,6 @@ def edit_theme(slug):
         tk.abort(404, tk._('Tema bulunamadı'))
     except Exception as e:
         tk.abort(500, tk._(f"Sayfa yüklenirken bir hata oluştu: {e}"))
-
 
 def delete_theme(slug):
     """Tema sil (yalnızca POST)."""
