@@ -185,25 +185,25 @@ def read_theme(slug): # <-- slug is received here
                     
                     # Previous button
                     if current_page > 1:
-                        # tk.h.pager_url(endpoint_name, page=page_number, route_param=value, query_param=value)
-                        prev_url = tk.h.pager_url(endpoint_name, page=current_page - 1, slug=slug_param, q=q) # Explicitly 'page='
+                        # Correct call: endpoint_name, page_number as positional, then slug and q as keywords
+                        prev_url = tk.h.pager_url(endpoint_name, current_page - 1, slug=slug_param, q=q)
                         html_parts.append(f'<li class="previous"><a href="{prev_url}">« Previous</a></li>')
                     
                     # Page numbers
                     for i in range(1, total_pages + 1):
-                        page_url = tk.h.pager_url(endpoint_name, page=i, slug=slug_param, q=q) # Explicitly 'page='
+                        # Correct call: endpoint_name, page_number as positional, then slug and q as keywords
+                        page_url = tk.h.pager_url(endpoint_name, i, slug=slug_param, q=q)
                         active_class = 'active' if i == current_page else ''
                         html_parts.append(f'<li class="{active_class}"><a href="{page_url}">{i}</a></li>')
                     
                     # Next button
                     if current_page < total_pages:
-                        next_url = tk.h.pager_url(endpoint_name, page=current_page + 1, slug=slug_param, q=q) # Explicitly 'page='
+                        # Correct call: endpoint_name, page_number as positional, then slug and q as keywords
+                        next_url = tk.h.pager_url(endpoint_name, current_page + 1, slug=slug_param, q=q)
                         html_parts.append(f'<li class="next"><a href="{next_url}">Next »</a></li>')
                     
                     # Wrap in standard Bootstrap pagination classes for basic styling
                     return '<div class="pagination"><ul>' + ''.join(html_parts) + '</ul></div>'
-
-
                 # This is the callable assigned to c.page.pager in the template
                 def _pager_callable(**kwargs): 
                     q_param = kwargs.get('q', '') # Extract 'q'
