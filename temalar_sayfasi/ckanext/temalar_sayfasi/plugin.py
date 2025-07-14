@@ -131,10 +131,18 @@ def new_theme():
                 upload.upload(uploaded_file)
                 
                 saved_filename = upload.filename
-                if not saved_filename:
-                    # Fallback if .filename is None, often .filepath holds the value
-                    saved_filename = upload.filepath.split(tk.config.get('ckan.storage_path'))[-1].lstrip('/')
-                    log.warning(f"new_theme: upload.filename was None, falling back to filepath: {saved_filename}")
+                if not saved_filename and hasattr(upload, 'filepath') and upload.filepath:
+                    # Fallback if .filename is None, attempt to derive from .filepath
+                    storage_path = tk.config.get('ckan.storage_path')
+                    if storage_path and upload.filepath.startswith(storage_path):
+                        saved_filename = upload.filepath[len(storage_path):].lstrip('/')
+                    else:
+                        saved_filename = upload.filepath # Assume it's already relative or fully exposed
+                    log.warning(f"new_theme: upload.filename was None, falling back to derived filepath: {saved_filename}")
+                elif not saved_filename:
+                    log.error(f"FATAL: new_theme: Both upload.filename and upload.filepath were None after upload for {uploaded_file.filename}. Image will not be saved in DB.")
+                    raise Exception("Dosya yolu yükleyici tarafından alınamadı (filename/filepath None).")
+
 
                 data_dict['background_image'] = saved_filename
                 log.info(f"new_theme: Image uploaded successfully, saving as: {data_dict['background_image']}")
@@ -366,10 +374,23 @@ def edit_theme(slug):
             try:
                 upload.upload(uploaded_file)
 
+                # --- FIX START: More robust filename retrieval ---
                 saved_filename = upload.filename
-                if not saved_filename:
-                    saved_filename = upload.filepath.split(tk.config.get('ckan.storage_path'))[-1].lstrip('/')
-                    log.warning(f"edit_theme (POST): upload.filename was None, falling back to filepath: {saved_filename}")
+                if not saved_filename and hasattr(upload, 'filepath') and upload.filepath:
+                    # Fallback if .filename is None, attempt to derive from .filepath
+                    storage_path = tk.config.get('ckan.storage_path')
+                    if storage_path and upload.filepath.startswith(storage_path):
+                        saved_filename = upload.filepath[len(storage_path):].lstrip('/')
+                    else:
+                        # If storage_path not in filepath, assume filepath is already relative or fully exposed
+                        saved_filename = upload.filepath
+                        log.warning(f"edit_theme (POST): upload.filename was None, using filepath directly (not relative to storage_path): {saved_filename}")
+                elif not saved_filename:
+                    # If both filename and filepath are None, this is a serious issue.
+                    # We cannot reliably get the uploaded filename.
+                    log.error(f"FATAL: edit_theme (POST): Both upload.filename and upload.filepath are None after successful upload for {uploaded_file.filename}. File won't be saved in DB.")
+                    raise Exception("Dosya yolu yükleyici tarafından alınamadı (filename/filepath None).")
+                # --- FIX END ---
 
                 update_data['background_image'] = saved_filename
                 uploaded_new_file = True
