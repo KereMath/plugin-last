@@ -127,7 +127,7 @@ def new_theme():
     return tk.render('theme/new_theme.html')
 
 
-def read_theme(slug):
+def read_theme(slug): # <-- slug is received here
     """
     /temalar/<slug> – Tema detayları. Herkesin erişebildiği detay sayfası.
     """
@@ -167,14 +167,16 @@ def read_theme(slug):
             packages, total = res['results'], res['count']
 
         class Page:
-            def __init__(self, items, item_count):
+            def __init__(self, items, item_count, current_slug): # Pass slug to Page init
                 self.items          = items
                 self.item_count     = item_count
                 self.q              = tk.request.args.get('q', '')
                 self.sort_by_selected = tk.request.args.get('sort', '')
+                self.current_slug = current_slug # Store slug here
 
                 # Helper function to generate full pager HTML
-                def _generate_pager_html(base_url, item_count, items_per_page, current_page, q=''):
+                # Now receives endpoint_name directly
+                def _generate_pager_html(endpoint_name, item_count, items_per_page, current_page, slug_param, q=''):
                     total_pages = (item_count + items_per_page - 1) // items_per_page
                     if total_pages <= 1:
                         return ''
@@ -183,7 +185,8 @@ def read_theme(slug):
                     
                     # Previous button
                     if current_page > 1:
-                        prev_url = tk.h.pager_url(base_url, current_page - 1, q=q)
+                        # tk.h.pager_url(endpoint_name, page_number, route_param=value, query_param=value)
+                        prev_url = tk.h.pager_url(endpoint_name, current_page - 1, slug=slug_param, q=q)
                         html_parts.append(f'<li class="previous"><a href="{prev_url}">« Previous</a></li>')
                     
                     # Page numbers
@@ -191,13 +194,13 @@ def read_theme(slug):
                     # For simplicity, we'll show all pages here, but you might want to implement a more complex logic
                     # like `h.pager` does (e.g., `max_page_numbers=5`).
                     for i in range(1, total_pages + 1):
-                        page_url = tk.h.pager_url(base_url, i, q=q)
+                        page_url = tk.h.pager_url(endpoint_name, i, slug=slug_param, q=q)
                         active_class = 'active' if i == current_page else ''
-                        html_parts.append(f'<li class="{active_class}"><a href="{page_url}">{i}</a></li>')
+                        html_parts.append(f'<li class="{active_class}"><a href="{page_url}">{i}</a></li>') # Re-added active_class correctly
                     
                     # Next button
                     if current_page < total_pages:
-                        next_url = tk.h.pager_url(base_url, current_page + 1, q=q)
+                        next_url = tk.h.pager_url(endpoint_name, current_page + 1, slug=slug_param, q=q)
                         html_parts.append(f'<li class="next"><a href="{next_url}">Next »</a></li>')
                     
                     # Wrap in standard Bootstrap pagination classes for basic styling
@@ -209,14 +212,14 @@ def read_theme(slug):
                     q_param = kwargs.get('q', '') # Extract 'q'
                     
                     current_page_from_request = int(tk.request.args.get('page', 1))
-                    base_url_for_pager = tk.url_for('temalar_sayfasi.read', slug=slug)
                     
-                    # Call our HTML generator
+                    # Call our HTML generator with the endpoint name and slug
                     return _generate_pager_html(
-                        base_url=base_url_for_pager,
+                        endpoint_name='temalar_sayfasi.read', # Explicitly pass endpoint name
                         item_count=self.item_count,
                         items_per_page=ITEMS_PER_PAGE,
                         current_page=current_page_from_request,
+                        slug_param=self.current_slug, # Pass the slug from the instance
                         q=q_param
                     )
                 
@@ -224,7 +227,8 @@ def read_theme(slug):
                 self.pager = _pager_callable if self.item_count > ITEMS_PER_PAGE else (lambda **kw: '')
 
 
-        tk.c.page = Page(packages, total)
+        # Instantiate Page class, passing the slug from the read_theme function
+        tk.c.page = Page(packages, total, slug) # Pass slug here
 
         tracking_enabled = asbool(tk.config.get('ckan.tracking_enabled', False))
         tk.c.sort_by_options = [
