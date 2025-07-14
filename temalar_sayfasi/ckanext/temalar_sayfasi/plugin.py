@@ -111,56 +111,74 @@ def new_theme():
     tk.c.errors, tk.c.data = {}, {}
 
     if tk.request.method == 'POST':
-        upload = uploader.get_uploader('theme_background')
-
+        # Prepare data_dict from form
         data_dict = {
             'slug':         tk.request.form.get('slug'),
             'name':         tk.request.form.get('name'),
             'description': tk.request.form.get('description'),
             'color':        tk.request.form.get('color'),
             'icon':         tk.request.form.get('icon'),
+            # Pass original filename for the uploader (it will modify this)
+            'background_image': tk.request.form.get('background_image'), # This might be old path on GET
+            'clear_background_image': tk.request.form.get('clear_background_image')
         }
 
+        # IMPORTANT: Directly pass the uploaded file object to data_dict
+        # The uploader expects to find the file here to process it.
+        # It's usually under a key matching the form field name.
         if 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
-            uploaded_file = tk.request.files['background_image_upload']
-            try:
-                if not hasattr(upload, 'clear'):
-                    upload.clear = False
-                    log.debug("new_theme: Set 'clear' attribute to False on uploader instance.")
-
-                upload.upload(uploaded_file)
-                
-                saved_filename = upload.filename
-                if not saved_filename and hasattr(upload, 'filepath') and upload.filepath:
-                    # Fallback if .filename is None, attempt to derive from .filepath
-                    storage_path = tk.config.get('ckan.storage_path')
-                    if storage_path and upload.filepath.startswith(storage_path):
-                        saved_filename = upload.filepath[len(storage_path):].lstrip('/')
-                    else:
-                        saved_filename = upload.filepath # Assume it's already relative or fully exposed
-                    log.warning(f"new_theme: upload.filename was None, falling back to derived filepath: {saved_filename}")
-                elif not saved_filename:
-                    log.error(f"FATAL: new_theme: Both upload.filename and upload.filepath were None after upload for {uploaded_file.filename}. Image will not be saved in DB.")
-                    raise Exception("Dosya yolu yükleyici tarafından alınamadı (filename/filepath None).")
-
-
-                data_dict['background_image'] = saved_filename
-                log.info(f"new_theme: Image uploaded successfully, saving as: {data_dict['background_image']}")
-            except Exception as upload_err:
-                log.error(f"new_theme: Error during file upload: {upload_err}", exc_info=True)
-                tk.h.flash_error(tk._(f'Görsel yüklenirken bir hata oluştu: {upload_err}'))
-                tk.c.errors, tk.c.data = {'background_image_upload': [str(upload_err)]}, data_dict
-                return tk.render('theme/new_theme.html')
+            data_dict['background_image_upload'] = tk.request.files['background_image_upload']
+            log.info(f"new_theme: Detected new file upload: {data_dict['background_image_upload'].filename}")
         else:
-            data_dict['background_image'] = None # No file uploaded initially
+            data_dict['background_image_upload'] = None
+            log.info("new_theme: No new file uploaded.")
+
 
         try:
+            # Get the uploader instance (associated with 'theme_background' prefix)
+            # Pass original filename to the uploader's init if it's an old file being replaced/cleared
+            # This 'old_filename' is used by uploader.py's internal logic for deletion.
+            # `data_dict.get('background_image')` will be empty string if there was no prior image,
+            # or the old image path if it exists.
+            upload = uploader.get_uploader('theme_background', data_dict.get('background_image'))
+
+            # --- CRITICAL FIX START: Call update_data_dict before upload() ---
+            # This method processes the uploaded file, sets upload.filename/filepath,
+            # and updates data_dict['background_image'] with the new (or cleared) filename.
+            upload.update_data_dict(data_dict,
+                                    url_field='background_image',
+                                    file_field='background_image_upload',
+                                    clear_field='clear_background_image')
+            log.info(f"new_theme: After update_data_dict, data_dict['background_image'] is: {data_dict.get('background_image')}")
+            # --- CRITICAL FIX END ---
+
+            # Now, if an actual file was provided (and processed by update_data_dict), call upload().
+            # upload.filename will now be correctly set by update_data_dict.
+            if upload.filename:
+                # The 'upload' method of ckan.lib.uploader.Upload class
+                # uses self.filepath which was set by update_data_dict.
+                upload.upload() # No need to pass uploaded_file or max_size here if update_data_dict handled it.
+                log.info(f"new_theme: File physically uploaded to storage path. Final filename: {upload.filename}")
+            else:
+                log.info("new_theme: No file to physically upload (either no new file or cleared).")
+
+
+            # Old image deletion logic (now simplified, as uploader.update_data_dict/upload() handles it mostly)
+            # If clear_background_image was true and there was an old file, update_data_dict will have set
+            # data_dict['background_image'] to None, and uploader.upload() (if it runs) handles deleting old_filepath.
+            # We explicitly check this in `edit_theme` where there is more complexity.
+            # For new_theme, it's simpler: if an image was successfully assigned (data_dict['background_image'] is not None
+            # and a file was uploaded), it's considered new.
+
+            # Proceed with theme creation (data_dict now contains the correct background_image path or None)
             tk.get_action('theme_category_create')(context, data_dict)
             tk.h.flash_success(tk._('Tema başarıyla oluşturuldu.'))
             return tk.h.redirect_to('temalar_sayfasi.dashboard_index')
         except tk.ValidationError as e:
             tk.c.errors, tk.c.data = e.error_dict, data_dict
-            if 'background_image' in data_dict and data_dict['background_image']:
+            # If validation fails, and a file was uploaded and might be in storage, clean it.
+            # We use `data_dict.get('background_image')` as this is what the uploader would have set.
+            if data_dict.get('background_image'):
                 full_image_path = os.path.join(tk.config.get('ckan.storage_path'), data_dict['background_image'])
                 try:
                     if os.path.exists(full_image_path):
@@ -173,7 +191,7 @@ def new_theme():
             log.error(f"new_theme: Unexpected error during theme creation: {e}", exc_info=True)
             tk.h.flash_error(tk._(f'Tema oluşturulurken beklenmeyen bir hata oluştu: {e}'))
             tk.c.data = data_dict
-            if 'background_image' in data_dict and data_dict['background_image']:
+            if data_dict.get('background_image'):
                 full_image_path = os.path.join(tk.config.get('ckan.storage_path'), data_dict['background_image'])
                 try:
                     if os.path.exists(full_image_path):
@@ -344,88 +362,72 @@ def edit_theme(slug):
 
 
     if tk.request.method == 'POST':
-        update_data = {
+        # Prepare data_dict from form fields
+        # Note: 'background_image' will initially hold the OLD path if present,
+        # or an empty string/None if no old image.
+        data_dict = {
             'slug':         slug,
             'name':         tk.request.form.get('name'),
             'description': tk.request.form.get('description'),
             'color':        tk.request.form.get('color'),
             'icon':         tk.request.form.get('icon'),
+            'background_image': tk.request.form.get('background_image'), # This is the existing image path from form if any
+            'clear_background_image': tk.request.form.get('clear_background_image') # True/False based on checkbox
         }
 
+        # IMPORTANT: Pass the actual uploaded file object into data_dict under the correct key
+        if 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
+            data_dict['background_image_upload'] = tk.request.files['background_image_upload']
+            log.info(f"edit_theme (POST): New file detected in request files: {data_dict['background_image_upload'].filename}")
+        else:
+            data_dict['background_image_upload'] = None
+            log.info("edit_theme (POST): No new file provided in request.")
+
+
+        # Retrieve current_theme_data for existing image path *before* potential modification by uploader
+        # This is needed for deletion logic later.
         current_theme_full_data = tk.get_action('theme_category_show')(context, {'slug': slug})
         current_background_image_path = current_theme_full_data['category'].get('background_image')
 
-        should_delete_old_image = False
-        uploaded_new_file = False
-
-        if tk.request.form.get('clear_background_image') == 'true':
-            update_data['background_image'] = None
-            should_delete_old_image = True
-            log.info(f"edit_theme (POST): 'Clear image' checkbox checked for slug: {slug}.")
-        elif 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
-            uploaded_file = tk.request.files['background_image_upload']
-            log.info(f"edit_theme (POST): New image detected for slug: {slug}.")
-
-            upload = uploader.get_uploader('theme_background')
-            if not hasattr(upload, 'clear'):
-                upload.clear = False
-                log.debug("edit_theme (POST): Set 'clear' attribute to False on uploader instance.")
-
-            try:
-                upload.upload(uploaded_file)
-
-                # --- FIX START: More robust filename retrieval ---
-                saved_filename = upload.filename
-                if not saved_filename and hasattr(upload, 'filepath') and upload.filepath:
-                    # Fallback if .filename is None, attempt to derive from .filepath
-                    storage_path = tk.config.get('ckan.storage_path')
-                    if storage_path and upload.filepath.startswith(storage_path):
-                        saved_filename = upload.filepath[len(storage_path):].lstrip('/')
-                    else:
-                        # If storage_path not in filepath, assume filepath is already relative or fully exposed
-                        saved_filename = upload.filepath
-                        log.warning(f"edit_theme (POST): upload.filename was None, using filepath directly (not relative to storage_path): {saved_filename}")
-                elif not saved_filename:
-                    # If both filename and filepath are None, this is a serious issue.
-                    # We cannot reliably get the uploaded filename.
-                    log.error(f"FATAL: edit_theme (POST): Both upload.filename and upload.filepath are None after successful upload for {uploaded_file.filename}. File won't be saved in DB.")
-                    raise Exception("Dosya yolu yükleyici tarafından alınamadı (filename/filepath None).")
-                # --- FIX END ---
-
-                update_data['background_image'] = saved_filename
-                uploaded_new_file = True
-                should_delete_old_image = True
-                log.info(f"edit_theme (POST): Image uploaded successfully, saving as: {update_data['background_image']}")
-            except Exception as upload_err:
-                log.error(f"edit_theme (POST): Error during file upload for theme {slug}: {upload_err}", exc_info=True)
-                tk.h.flash_error(tk._(f'Görsel yüklenirken bir hata oluştu: {upload_err}'))
-                tk.c.errors, tk.c.data = {'background_image_upload': [str(upload_err)]}, tk.request.form
-                update_data['background_image'] = current_background_image_path
-                tk.c.theme_data = current_theme_full_data
-                all_ds = tk.get_action('package_search')(context, {'rows': 1000, 'include_private': True})
-                tk.c.all_datasets = all_ds['results']
-                return tk.render('theme/edit_theme.html')
-        else:
-            update_data['background_image'] = current_background_image_path
-            log.info(f"edit_theme (POST): No image changes for slug: {slug}, retaining existing path: {current_background_image_path}.")
-
-
-        if should_delete_old_image and current_background_image_path:
-            full_old_image_path = os.path.join(tk.config.get('ckan.storage_path'), current_background_image_path)
-            try:
-                if os.path.exists(full_old_image_path):
-                    os.remove(full_old_image_path)
-                    log.info(f"edit_theme (POST): Old background image deleted: {full_old_image_path}")
-                else:
-                    log.info(f"edit_theme (POST): Old background image not found to delete: {full_old_image_path}")
-            except OSError as e:
-                log.warning(f"edit_theme (POST): Error deleting old background image: {full_old_image_path} - {e}", exc_info=True)
-
 
         try:
-            tk.get_action('theme_category_update')(context, update_data)
-            log.info(f"edit_theme (POST): Called theme_category_update for {slug} with background_image: {update_data.get('background_image')}")
+            # Get the uploader instance. Pass the object_type and the old filename.
+            # The old_filename is crucial for uploader's internal clear logic.
+            upload = uploader.get_uploader('theme_background', old_filename=current_background_image_path)
+            log.debug(f"edit_theme (POST): Uploader initialized with old_filename: {current_background_image_path}")
 
+            # --- CRITICAL FIX: Call update_data_dict before upload() ---
+            # This method processes the uploaded file (if any), sets upload.filename/filepath on the uploader object,
+            # and updates data_dict['background_image'] with the new (or cleared) filename.
+            upload.update_data_dict(data_dict,
+                                    url_field='background_image',       # This is where the new filename will go in data_dict
+                                    file_field='background_image_upload', # This is where the uploaded file object is in data_dict
+                                    clear_field='clear_background_image') # This is the clear checkbox value
+
+            log.info(f"edit_theme (POST): After update_data_dict: upload.filename='{upload.filename}', upload.filepath='{upload.filepath}', data_dict['background_image']='{data_dict.get('background_image')}'")
+
+            # Now, if an actual file was provided and processed by update_data_dict, call upload().
+            # upload.filename will be correctly set by update_data_dict if a file was provided.
+            if upload.filename: # Only call upload() if there's a new filename to write
+                upload.upload() # This method uses self.filepath (set by update_data_dict) to save the file
+                log.info(f"edit_theme (POST): File physically uploaded to storage path. Final filename: {upload.filename}")
+            else:
+                log.info("edit_theme (POST): No new file to physically upload (either no new file or it was cleared).")
+
+            # data_dict['background_image'] now holds the *correct* path that should be saved to DB
+            # (either new path, None if cleared, or old path if no changes)
+
+            # Old image deletion logic: The uploader.upload() method itself handles deleting old_filepath
+            # if `self.clear` is True (which update_data_dict sets if the clear checkbox is true,
+            # or if a new file overwrites an old one). We don't need a separate os.remove here.
+            # Removed redundant `should_delete_old_image` logic here.
+
+            # Proceed with theme creation (data_dict now contains the correct background_image path or None)
+            tk.get_action('theme_category_update')(context, data_dict)
+            log.info(f"edit_theme (POST): Called theme_category_update for {slug} with background_image: {data_dict.get('background_image')}")
+
+
+            # Handle dataset assignments (unchanged logic)
             new_ids = set(tk.request.form.getlist('dataset_ids'))
             current = tk.get_action('theme_category_show')(context, {'slug': slug})
             old_ids = set(ds['id'] for ds in current.get('datasets', []))
@@ -446,30 +448,34 @@ def edit_theme(slug):
             log.error(f"edit_theme (POST): Validation error during theme update for {slug}: {e.error_dict}", exc_info=True)
             tk.c.errors, tk.c.data = e.error_dict, tk.request.form
             tk.h.flash_error(str(e))
-            if uploaded_new_file and 'background_image' in update_data and update_data['background_image']:
-                full_image_path = os.path.join(tk.config.get('ckan.storage_path'), update_data['background_image'])
+            # If validation fails, and a file was successfully uploaded (and not cleaned by uploader.py itself due to its logic)
+            # we need to make sure it's not left behind if the transaction rolls back or form is re-rendered.
+            # `data_dict.get('background_image')` will contain the new file path if it was set successfully by uploader.update_data_dict.
+            if data_dict.get('background_image') and data_dict.get('background_image') != current_background_image_path:
+                full_image_path = os.path.join(tk.config.get('ckan.storage_path'), data_dict['background_image'])
                 try:
                     if os.path.exists(full_image_path):
                         os.remove(full_image_path)
-                        log.info("edit_theme (POST): Validation error, uploaded image cleaned: %s", full_image_path)
+                        log.info("edit_theme (POST): Validation error, newly uploaded image cleaned: %s", full_image_path)
                 except OSError as err:
-                    log.warning("edit_theme (POST): Error cleaning image after validation error: %s - %s", full_image_path, err)
+                    log.warning("edit_theme (POST): Error cleaning newly uploaded image after validation error: %s - %s", full_image_path, err)
             tk.c.theme_data = tk.get_action('theme_category_show')({}, {'slug': slug})
             all_ds = tk.get_action('package_search')(context, {'rows': 1000, 'include_private': True})
             tk.c.all_datasets = all_ds['results']
             return tk.render('theme/edit_theme.html')
-        except Exception as e:
+        except Exception as e: # Catch any other unexpected errors
             log.error(f"edit_theme (POST): Unexpected error during theme update for {slug}: {e}", exc_info=True)
             tk.h.flash_error(tk._(f'Bir hata oluştu: {e}'))
             tk.c.data = tk.request.form
-            if uploaded_new_file and 'background_image' in update_data and update_data['background_image']:
-                full_image_path = os.path.join(tk.config.get('ckan.storage_path'), update_data['background_image'])
+            # Similar cleanup for unexpected errors
+            if data_dict.get('background_image') and data_dict.get('background_image') != current_background_image_path:
+                full_image_path = os.path.join(tk.config.get('ckan.storage_path'), data_dict['background_image'])
                 try:
                     if os.path.exists(full_image_path):
                         os.remove(full_image_path)
-                        log.info("edit_theme (POST): Unexpected error, uploaded image cleaned: %s", full_image_path)
+                        log.info("edit_theme (POST): Unexpected error, newly uploaded image cleaned: %s", full_image_path)
                 except OSError as err:
-                    log.warning("edit_theme (POST): Error cleaning image after unexpected error: %s - %s", full_image_path, err)
+                    log.warning("edit_theme (POST): Error cleaning newly uploaded image after unexpected error: %s - %s", full_image_path, err)
             tk.c.theme_data = tk.get_action('theme_category_show')({}, {'slug': slug})
             all_ds = tk.get_action('package_search')(context, {'rows': 1000, 'include_private': True})
             tk.c.all_datasets = all_ds['results']
@@ -493,7 +499,7 @@ def delete_theme(slug):
         is_theme_admin = any(t['theme_slug'] == slug and t['role'] == 'admin' for t in user_themes)
 
         if not is_theme_admin:
-            raise NotAuthorized('Bu temayı silmek için yetkiniz yok.')
+            raise NotAuthorized('Bu temayı silmek for yetkiniz yok.')
 
 
     try:
