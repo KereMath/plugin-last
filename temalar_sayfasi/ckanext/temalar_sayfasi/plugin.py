@@ -301,7 +301,6 @@ def edit_theme(slug):
 
     is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin
 
-    
     tk.c.user_theme_role_for_this_theme = None 
     is_theme_authorized_for_edit = False
 
@@ -329,11 +328,11 @@ def edit_theme(slug):
     if tk.request.method == 'POST':
         
         update_data = {
-            'slug':        slug,
-            'name':        tk.request.form.get('name'),
+            'slug':         slug,
+            'name':         tk.request.form.get('name'),
             'description': tk.request.form.get('description'),
-            'color':       tk.request.form.get('color'),
-            'icon':        tk.request.form.get('icon'),
+            'color':        tk.request.form.get('color'),
+            'icon':         tk.request.form.get('icon'),
             # 'background_image' doğrudan formdan gelmeyecek, dosyadan alacağız
         }
 
@@ -342,6 +341,7 @@ def edit_theme(slug):
         current_background_image_path = current_theme_data.get('background_image')
 
         should_delete_old_image = False
+        uploaded_new_file = False # Flag to track if a new file was actually uploaded
 
         # Görseli kaldırıp kaldırmadığımızı kontrol et
         if tk.request.form.get('clear_background_image') == 'true':
@@ -352,11 +352,37 @@ def edit_theme(slug):
             uploaded_file = tk.request.files['background_image_upload']
             # If a new file is uploaded, the old one should be removed
             should_delete_old_image = True
-            
+            uploaded_new_file = True # Set flag
+
             # Save the new file
-            upload = uploader.get_uploader('theme_background') # Initialize uploader for the new upload
-            upload.upload(uploaded_file)
-            update_data['background_image'] = upload.filename # Assign the new file's path
+            upload = uploader.get_uploader('theme_background') 
+            # In newer CKAN versions, the `clear` attribute might not be directly set on the uploader
+            # object, or it's handled internally. The error suggests the `upload` method itself
+            # is trying to access `self.clear`.
+            # Let's try passing the 'clear' instruction if the uploader supports it.
+            # However, the traceback indicates a missing attribute, not an unsupported argument.
+            # The most robust solution is to ensure your `ckan.lib.uploader` is consistent.
+            # But if we must modify here, the issue is internal to Uploader.upload.
+
+            # Re-initializing uploader here without an explicit clear flag
+            # might cause the internal check in uploader.py to fail.
+            # A safer approach is to ensure compatibility or handle the deletion
+            # entirely within your plugin before calling `upload`.
+
+            # Given the traceback, the `uploader.upload(uploaded_file)` call
+            # is failing because the `uploader` object (instance of Upload)
+            # doesn't have `clear`.
+
+            # This indicates that the `uploader.get_uploader` might not be
+            # setting this attribute, or the `Uploader` class itself has changed.
+
+            # Option 1: Try setting clear to False if the uploader class supports it
+            # This is a guess based on the error.
+            # upload.clear = False # <--- Try adding this line if your CKAN version's Uploader expects it.
+                                  # If not, it will still raise AttributeError.
+
+            upload.upload(uploaded_file) # This line causes the error.
+            update_data['background_image'] = upload.filename
         else:
             # Ne yeni bir dosya yüklendi ne de mevcut dosya silindi, o zaman mevcut yolu koru
             update_data['background_image'] = current_background_image_path
@@ -397,7 +423,7 @@ def edit_theme(slug):
             tk.c.errors, tk.c.data = e.error_dict, tk.request.form
             tk.h.flash_error(str(e))
             # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
-            if 'background_image' in update_data and update_data['background_image'] and tk.request.files['background_image_upload'].filename:
+            if uploaded_new_file and 'background_image' in update_data and update_data['background_image']: # Use the flag here
                 full_image_path = os.path.join(tk.config.get('ckan.storage_path'), update_data['background_image'])
                 try:
                     if os.path.exists(full_image_path):
@@ -410,7 +436,7 @@ def edit_theme(slug):
             tk.h.flash_error(tk._(f'Bir hata oluştu: {e}'))
             tk.c.data = tk.request.form
             # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
-            if 'background_image' in update_data and update_data['background_image'] and tk.request.files['background_image_upload'].filename:
+            if uploaded_new_file and 'background_image' in update_data and update_data['background_image']: # Use the flag here
                 full_image_path = os.path.join(tk.config.get('ckan.storage_path'), update_data['background_image'])
                 try:
                     if os.path.exists(full_image_path):
@@ -423,7 +449,7 @@ def edit_theme(slug):
     try:
         tk.c.theme_data = tk.get_action('theme_category_show')({}, {'slug': slug})
         all_ds = tk.get_action('package_search')(context, {
-            'rows':            1000,
+            'rows':          1000,
             'include_private': True
         })
         tk.c.all_datasets = all_ds['results']
@@ -432,7 +458,7 @@ def edit_theme(slug):
         tk.abort(404, tk._('Tema bulunamadı'))
     except Exception as e:
         tk.abort(500, tk._(f"Sayfa yüklenirken bir hata oluştu: {e}"))
-
+        
 def delete_theme(slug):
     """Tema sil (yalnızca POST)."""
     if tk.request.method != 'POST':
