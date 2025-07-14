@@ -12,6 +12,7 @@ Tema (category) yönetimi:
 """
 
 import logging
+import os # Added for file path operations
 
 import ckan.plugins as p
 import ckan.plugins.toolkit as tk
@@ -129,7 +130,7 @@ def new_theme():
         if 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
             uploaded_file = tk.request.files['background_image_upload']
             # Dosyayı kaydet ve yolunu al
-            upload.upload(uploaded_file) # uploader.get_max_image_size() KALDIRILDI
+            upload.upload(uploaded_file)
             data_dict['background_image'] = upload.filename # Kaydedilen dosyanın yolunu background_image alanına ata
         else:
             data_dict['background_image'] = None # Dosya yüklenmediyse boş bırak
@@ -143,14 +144,26 @@ def new_theme():
             tk.c.errors, tk.c.data = e.error_dict, data_dict
             # Hata durumunda yüklenen dosyayı temizle
             if 'background_image' in data_dict and data_dict['background_image']:
-                 upload.clear(data_dict['background_image'])
+                full_image_path = os.path.join(tk.config.get('ckan.storage_path'), data_dict['background_image'])
+                try:
+                    if os.path.exists(full_image_path):
+                        os.remove(full_image_path)
+                        log.info("Yeni tema oluşturulurken hata oluştu, yüklenen görsel temizlendi: %s", full_image_path)
+                except OSError as err:
+                    log.warning("Hata durumunda yeni yüklenen görsel silinirken hata oluştu: %s - %s", full_image_path, err)
         except Exception as e:
             log.error(f"Yeni tema oluşturulurken hata: {e}", exc_info=True)
             tk.h.flash_error(tk._(f'Tema oluşturulurken beklenmeyen bir hata oluştu: {e}'))
             tk.c.data = data_dict # Verileri formda tut
             # Hata durumunda yüklenen dosyayı temizle
             if 'background_image' in data_dict and data_dict['background_image']:
-                 upload.clear(data_dict['background_image'])
+                full_image_path = os.path.join(tk.config.get('ckan.storage_path'), data_dict['background_image'])
+                try:
+                    if os.path.exists(full_image_path):
+                        os.remove(full_image_path)
+                        log.info("Yeni tema oluşturulurken hata oluştu, yüklenen görsel temizlendi: %s", full_image_path)
+                except OSError as err:
+                    log.warning("Hata durumunda yeni yüklenen görsel silinirken hata oluştu: %s - %s", full_image_path, err)
 
 
     return tk.render('theme/new_theme.html')
@@ -314,8 +327,6 @@ def edit_theme(slug):
         tk.c.data, tk.c.errors = {}, {}
 
     if tk.request.method == 'POST':
-        # Dosya yükleyiciyi başlat
-        upload = uploader.get_uploader('theme_background')
         
         update_data = {
             'slug':        slug,
@@ -330,23 +341,38 @@ def edit_theme(slug):
         current_theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})['category']
         current_background_image_path = current_theme_data.get('background_image')
 
+        should_delete_old_image = False
+
         # Görseli kaldırıp kaldırmadığımızı kontrol et
         if tk.request.form.get('clear_background_image') == 'true':
             update_data['background_image'] = None # Veritabanında boş olarak kaydet
-            if current_background_image_path:
-                upload.clear(current_background_image_path) # Eski dosyayı sil
+            should_delete_old_image = True
         # Yeni bir görsel yüklenip yüklenmediğini kontrol et
         elif 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
             uploaded_file = tk.request.files['background_image_upload']
-            # Eski görsel varsa önce onu sil
-            if current_background_image_path:
-                upload.clear(current_background_image_path)
-            # Yeni dosyayı kaydet ve yolunu al
-            upload.upload(uploaded_file) # uploader.get_max_image_size() KALDIRILDI
-            update_data['background_image'] = upload.filename # Kaydedilen dosyanın yolunu ata
+            # If a new file is uploaded, the old one should be removed
+            should_delete_old_image = True
+            
+            # Save the new file
+            upload = uploader.get_uploader('theme_background') # Initialize uploader for the new upload
+            upload.upload(uploaded_file)
+            update_data['background_image'] = upload.filename # Assign the new file's path
         else:
             # Ne yeni bir dosya yüklendi ne de mevcut dosya silindi, o zaman mevcut yolu koru
             update_data['background_image'] = current_background_image_path
+
+        # Perform deletion of the old image if flagged and a path exists
+        if should_delete_old_image and current_background_image_path:
+            full_old_image_path = os.path.join(tk.config.get('ckan.storage_path'), current_background_image_path)
+            try:
+                if os.path.exists(full_old_image_path): # Check if file exists before trying to delete
+                    os.remove(full_old_image_path)
+                    log.info("Eski arka plan görseli silindi: %s", full_old_image_path)
+                else:
+                    log.info("Silinecek eski arka plan görseli bulunamadı: %s", full_old_image_path)
+            except OSError as e:
+                log.warning("Eski arka plan görseli silinirken hata oluştu: %s - %s", full_old_image_path, e)
+
 
         try:
             tk.get_action('theme_category_update')(context, update_data)
@@ -372,14 +398,26 @@ def edit_theme(slug):
             tk.h.flash_error(str(e))
             # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
             if 'background_image' in update_data and update_data['background_image'] and tk.request.files['background_image_upload'].filename:
-                 upload.clear(update_data['background_image'])
+                full_image_path = os.path.join(tk.config.get('ckan.storage_path'), update_data['background_image'])
+                try:
+                    if os.path.exists(full_image_path):
+                        os.remove(full_image_path)
+                        log.info("Tema güncellenirken hata oluştu, yüklenen görsel temizlendi: %s", full_image_path)
+                except OSError as err:
+                    log.warning("Hata durumunda yüklenen görsel silinirken hata oluştu: %s - %s", full_image_path, err)
         except Exception as e:
             log.error(f"Tema güncellenirken hata: {e}", exc_info=True)
             tk.h.flash_error(tk._(f'Bir hata oluştu: {e}'))
             tk.c.data = tk.request.form
             # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
             if 'background_image' in update_data and update_data['background_image'] and tk.request.files['background_image_upload'].filename:
-                 upload.clear(update_data['background_image'])
+                full_image_path = os.path.join(tk.config.get('ckan.storage_path'), update_data['background_image'])
+                try:
+                    if os.path.exists(full_image_path):
+                        os.remove(full_image_path)
+                        log.info("Tema güncellenirken hata oluştu, yüklenen görsel temizlendi: %s", full_image_path)
+                except OSError as err:
+                    log.warning("Hata durumunda yüklenen görsel silinirken hata oluştu: %s - %s", full_image_path, err)
 
 
     try:
@@ -424,8 +462,15 @@ def delete_theme(slug):
         
         # Eğer bir arka plan görseli varsa, onu da temizle
         if background_image_path:
-            upload = uploader.get_uploader('theme_background')
-            upload.clear(background_image_path)
+            full_image_path = os.path.join(tk.config.get('ckan.storage_path'), background_image_path)
+            try:
+                if os.path.exists(full_image_path):
+                    os.remove(full_image_path)
+                    log.info("Tema silindi, ilişkili arka plan görseli de silindi: %s", full_image_path)
+                else:
+                    log.info("Tema silindi ancak ilişkili arka plan görseli bulunamadı: %s", full_image_path)
+            except OSError as e:
+                log.warning("Tema silinirken arka plan görseli silinirken hata oluştu: %s - %s", full_image_path, e)
 
         tk.h.flash_success(tk._('Tema başarıyla silindi.'))
         return tk.h.redirect_to('temalar_sayfasi.index')
