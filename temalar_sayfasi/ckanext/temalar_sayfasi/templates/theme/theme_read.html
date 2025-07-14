@@ -1,517 +1,107 @@
 {% extends "page.html" %}
 
-{% block subtitle %}{{ tema.name }}{% endblock %}
-
-{% block breadcrumb_content %}
-  <li><a href="{{ h.url_for('temalar_sayfasi.index') }}">Temalar</a></li>
-  <li class="active">{{ tema.name }}</li>
-{% endblock %}
+{# Sayfa başlığını dinamik olarak temanın adıyla ayarla #}
+{% block subtitle %}{{ c.theme_data.category.name }}{% endblock %}
 
 {% block styles %}
   {{ super() }}
   <style>
-    /* Tablo stilleri - paste.txt'ten alındı */
-    .dataset-table {
-      width: 100%;
-      border-collapse: collapse;
-      background-color: #fff;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-top: 20px;
-    }
-
-    .dataset-table thead {
-      background-color: #495057;
-      color: white;
-    }
-
-    .dataset-table th {
-      padding: 15px 12px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 14px;
-      letter-spacing: 0.5px;
-    }
-
-    .dataset-table td {
-      padding: 12px;
-      border-bottom: 1px solid #f1f3f4;
-      vertical-align: top;
-      font-size: 14px;
-    }
-
-    .dataset-table tbody tr:hover {
-      background-color: #f8f9fa;
-    }
-
-    .dataset-link {
-      color: #1976d2;
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    .dataset-link:hover {
-      text-decoration: underline;
-    }
-    
-    /* Sütun Genişlikleri */
-    .t-title { width: 14%; }
-    .t-desc { width: 18%; }
-    .t-org { width: 10%; }
-    .t-user { width: 8%; }
-    .t-groups { width: 9%; }
-    .t-tags { width: 9%; }
-    .t-theme { width: 9%; }
-    .t-upd { width: 10%; }
-    .t-formats { width: 8%; }
-    .t-actions { width: 10%; }
-
-    .empty-cell {
-      color: #9b98a7;
-      font-style: italic;
-    }
-
-    /* Etiket Stilleri */
-    .format-tag, .user-tag, .group-tag, .tag-tag, .theme-tag {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-size: 11px;
-      font-weight: 500;
-      margin: 1px 2px;
-      white-space: nowrap;
-    }
-
-    .user-tag { background-color: #e3f2fd; color: #1976d2; }
-    .group-tag { background-color: #e8f5e8; color: #2e7d32; }
-    .tag-tag { background-color: #fbe9e7; color: #d84315; }
-    .theme-tag { background-color: #e0f7fa; color: #00838f; }
-
-    /* Format Etiket Stilleri */
-    .fmt-csv { background-color: #e8f5e8; color: #2e7d32; }
-    .fmt-xls { background-color: #e3f2fd; color: #1976d2; }
-    .fmt-json { background-color: #fff3e0; color: #f57c00; }
-    .fmt-xml { background-color: #fce4ec; color: #c2185b; }
-    .fmt-pdf { background-color: #ffebee; color: #d32f2f; }
-    .fmt-shp { background-color: #f3e5f5; color: #7b1fa2; }
-    .fmt-zip { background-color: #f1f8e9; color: #558b2f; }
-    .fmt-html { background-color: #e0f2f1; color: #00796b; }
-    .fmt-doc { background-color: #e8eaf6; color: #3f51b5; }
-    .fmt-txt { background-color: #fafafa; color: #616161; }
-    .fmt-other { background-color: #eceff1; color: #455a64; }
-
-    /* İşlemler sütunu buton stilleri */
-    .action-buttons {
-      display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
-    }
-
-    .action-btn {
-      padding: 4px 8px;
-      border: none;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      transition: all 0.15s ease;
-      white-space: nowrap;
-    }
-
-    .edit-btn {
-      background-color: #007bff;
-      color: white;
-    }
-
-    .edit-btn:hover {
-      background-color: #0056b3;
-      color: white;
-      text-decoration: none;
-    }
-
-    .delete-btn {
-      background-color: #dc3545;
-      color: white;
-    }
-
-    .delete-btn:hover {
-      background-color: #c82333;
-      color: white;
-      text-decoration: none;
-    }
-
-    /* Tema bilgi kutusu */
-    .theme-info-box {
-      background: linear-gradient(135deg, {{ tema.color or '#00BCD4' }} 0%, {{ tema.color or '#00BCD4' }}dd 100%);
-      color: white;
-      padding: 30px;
-      border-radius: 12px;
-      margin-bottom: 25px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
-    .theme-info-box h1 {
-      margin: 0 0 10px 0;
-      font-size: 28px;
-      font-weight: 600;
-    }
-
-    .theme-info-box .description {
-      font-size: 16px;
-      opacity: 0.95;
-      margin-bottom: 15px;
-    }
-
-    .theme-info-box .stats {
-      display: flex;
-      gap: 20px;
-      font-size: 14px;
-    }
-
-    .theme-info-box .stat-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    /* Arama kutusu */
-    .dataset-search {
-      margin-bottom: 20px;
-    }
-
-    .search-form {
-      display: flex;
-      gap: 10px;
-    }
-
-    .search-input {
-      flex: 1;
-      position: relative;
-    }
-
-    .search-input input {
-      width: 100%;
-      padding: 10px 15px;
-      border: 1px solid #ced4da;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-
-    .search-input input:focus {
-      outline: none;
-      border-color: #80bdff;
-      box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
-    }
-
-    .search-btn {
-      padding: 10px 20px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .search-btn:hover {
-      background-color: #0056b3;
-    }
-
-    /* Sayfalama wrapper */
-    .pagination-wrapper {
-      margin-top: 20px;
-      display: flex;
-      justify-content: center;
-    }
-
-    /* CKAN'ın kendi arama formunu gizle */
-    .module-content .search-form:not(.theme-search-form) {
+    /* CKAN'ın varsayılan başlığını ve açıklamasını gizle - "Sağlık" gibi başlıkları kaldırır */
+    section.module .module-content h1.page-heading,
+    section.module .module-content p {
       display: none !important;
+    }
+
+    /* "Bu Temadaki Veri Setleri" başlığını gizle */
+
+
+    /* Mevcut fab-edit-theme butonu için orijinal stilini koru */
+    .fab-edit-theme {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      z-index: 1100;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: #28a745;
+      color: white;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+    .fab-edit-theme:hover {
+      background-color: #218838;
+      transform: scale(1.1);
+    }
+
+    /* Montserrat Font Tanımı (global olduğu varsayımıyla) */
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+    body, html, * {
+        font-family: 'Montserrat', sans-serif !important;
     }
   </style>
 {% endblock %}
 
 {% block primary_content %}
-  <div class="theme-info-box">
-    <h1>
-      {% if tema.icon %}
-        <i class="fa fa-{{ tema.icon }}"></i>
+  {# Sistem yöneticisi, tema yöneticisi veya tema editörü ise, düzenleme butonu sağ altta sabit olarak görünür #}
+  {% if c.is_sysadmin or (c.user_theme_role_for_this_theme and c.user_theme_role_for_this_theme in ['admin', 'editor']) %}
+    <a href="{{ h.url_for('temalar_sayfasi.edit', slug=c.theme_data.category.slug) }}"
+       class="fab-edit-theme"
+       data-toggle="tooltip"
+       data-placement="left"
+       title="{{ _('Temayı Yönet') }}"> {# Orijinal metin ve tooltip korunur #}
+       <i class="fa fa-cog"></i> {# Çark ikonu korunur #}
+    </a>
+  {% endif %}
+
+  {# Ana sayfa başlığı ve açıklaması - Bunları gizlemek için yukarıdaki CSS yeterli olacaktır. #}
+  <section class="module">
+    <div class="module-content">
+      <h1 class="page-heading">
+        {% if c.theme_data.category.icon %}
+          <i class="fa fa-{{ c.theme_data.category.icon }}" style="color:{{ c.theme_data.category.color }}; margin-right: 15px;"></i>
+        {% endif %}
+        {{ c.theme_data.category.name }}
+      </h1>
+      {% if c.theme_data.category.description %}
+        <p>{{ c.theme_data.category.description }}</p>
       {% endif %}
-      {{ tema.name }}
-    </h1>
-    {% if tema.description %}
-      <p class="description">{{ tema.description }}</p>
-    {% endif %}
-    <div class="stats">
-      <div class="stat-item">
-        <i class="fa fa-database"></i>
-        <span>{{ theme_data.datasets|length if theme_data.datasets else 0 }} veri seti</span>
-      </div>
-      {% if tema.created_at %}
-        <div class="stat-item">
-          <i class="fa fa-calendar"></i>
-          <span>{{ h.render_datetime(tema.created_at, date_format='%d.%m.%Y') }}</span>
-        </div>
+    </div>
+  </section>
+
+  {# CKAN'ın varsayılan düzenini kullanmaya devam ediyoruz. #}
+  {# primary_content içerisinde CKAN'ın kendi fasetlerini ve liste snippet'lerini çağırıyoruz. #}
+  <div class="module">
+    <div class="module-content">
+      {# CKAN'ın kendi arama formu ve sıralama seçenekleri - Bu kalacak #}
+      {{ h.snippet('snippets/search_form.html', form_id='theme-datasets-search-form', type='dataset', query=c.q, sorting=c.sort_by_options, sorting_selected=c.sort_by_selected, count=c.page.item_count, facets=c.search_facets, placeholder=_('Search datasets...')) }}
+
+      {# CKAN'ın kendi veri seti listesi snippet'i - Bu kalacak #}
+      {% if c.page.items %}
+        {{ h.snippet('snippets/package_list.html', packages=c.page.items) }}
+      {% else %}
+        <p class="empty-message">{{ _('Bu temada henüz veri seti bulunmamaktadır.') }}</p>
+      {% endif %}
+
+      {# Sayfalama kontrolleri - Bu kalacak #}
+      {% if c.page.pager %}
+        {{ c.page.pager(q=c.q) }}
       {% endif %}
     </div>
   </div>
-
-  <section class="module">
-    <div class="module-content">
-      {% if datasets %}
-        <div class="dataset-search">
-          <form method="get" class="search-form theme-search-form">
-            <div class="search-input">
-              <input type="text" 
-                     name="q" 
-                     value="{{ q }}" 
-                     placeholder="Bu temadaki veri setlerinde ara..." 
-                     autocomplete="off">
-            </div>
-            <button type="submit" class="search-btn">
-              <i class="fa fa-search"></i>
-              Ara
-            </button>
-          </form>
-        </div>
-
-        <table class="dataset-table">
-          <thead>
-            <tr>
-              <th class="t-title">Başlık</th>
-              <th class="t-desc">Açıklama</th>
-              <th class="t-org">Organizasyon</th>
-              <th class="t-user">Oluşturan</th>
-              <th class="t-groups">Kategoriler</th>
-              <th class="t-tags">Etiketler</th>
-              <th class="t-theme">Tema</th>
-              <th class="t-upd">Güncellenme</th>
-              <th class="t-formats">Formatlar</th>
-              <th class="t-actions">İşlemler</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for dataset in datasets %}
-              <tr>
-                <td class="t-title">
-                  <a href="{{ h.url_for('dataset.read', id=dataset.name) }}" class="dataset-link">
-                    {{ dataset.title or dataset.name }}
-                  </a>
-                  {% if dataset.private %}
-                    <span title="Gizli" style="color:#d32f2f;margin-left:7px;font-size:1em;">🔒</span>
-                  {% endif %}
-                </td>
-                
-                <td class="t-desc">
-                  {% if dataset.notes %}
-                    {{ h.markdown_extract(dataset.notes, extract_length=150) }}
-                  {% else %}
-                    <span class="empty-cell">Yok</span>
-                  {% endif %}
-                </td>
-                
-                <td class="t-org">
-                  {% if dataset.organization %}
-                    {{ dataset.organization.title }}
-                  {% else %}
-                    <span class="empty-cell">Yok</span>
-                  {% endif %}
-                </td>
-                
-                <td class="t-user">
-                  {% if dataset.creator_user_id %}
-                    {% set user = h.get_user(dataset.creator_user_id) %}
-                    {% if user %}
-                      <span class="user-tag">{{ user.display_name or user.name }}</span>
-                    {% else %}
-                      <span class="empty-cell">Bilinmiyor</span>
-                    {% endif %}
-                  {% else %}
-                    <span class="empty-cell">Bilinmiyor</span>
-                  {% endif %}
-                </td>
-                
-                <td class="t-groups">
-                  {% if dataset.groups %}
-                    {% for group in dataset.groups %}
-                      <span class="group-tag">{{ group.display_name or group.title or group.name }}</span>
-                    {% endfor %}
-                  {% else %}
-                    <span class="empty-cell">Yok</span>
-                  {% endif %}
-                </td>
-                
-                <td class="t-tags">
-                  {% if dataset.tags %}
-                    {% for tag in dataset.tags %}
-                      <span class="tag-tag">{{ tag.display_name or tag.name }}</span>
-                    {% endfor %}
-                  {% else %}
-                    <span class="empty-cell">Yok</span>
-                  {% endif %}
-                </td>
-                
-                <td class="t-theme">
-                  <span class="theme-tag">{{ tema.name }}</span>
-                </td>
-                
-                <td class="t-upd">
-                  {% if dataset.metadata_modified %}
-                    {{ h.render_datetime(dataset.metadata_modified, date_format='%d.%m.%Y') }}
-                  {% else %}
-                    <span class="empty-cell">–</span>
-                  {% endif %}
-                </td>
-                
-                <td class="t-formats">
-                  {% if dataset.resources %}
-                    {% set formats = [] %}
-                    {% for resource in dataset.resources %}
-                      {% if resource.format and resource.format not in formats %}
-                        {% do formats.append(resource.format) %}
-                      {% endif %}
-                    {% endfor %}
-                    {% if formats %}
-                      {% for fmt in formats %}
-                        {% set fmt_lower = fmt.lower() %}
-                        {% set fmt_class = 'fmt-' + fmt_lower if fmt_lower in ['csv', 'xls', 'xlsx', 'json', 'xml', 'pdf', 'shp', 'zip', 'html', 'doc', 'docx', 'txt'] else 'fmt-other' %}
-                        {% if fmt_lower == 'xlsx' %}{% set fmt_class = 'fmt-xls' %}{% endif %}
-                        {% if fmt_lower == 'docx' %}{% set fmt_class = 'fmt-doc' %}{% endif %}
-                        <span class="format-tag {{ fmt_class }}">{{ fmt.upper() }}</span>
-                      {% endfor %}
-                    {% else %}
-                      <span class="empty-cell">–</span>
-                    {% endif %}
-                  {% else %}
-                    <span class="empty-cell">–</span>
-                  {% endif %}
-                </td>
-                
-                <td class="t-actions">
-                  <div class="action-buttons">
-                    {% if h.check_access('package_update', {'id': dataset.id}) %}
-                      <a href="{{ h.url_for('dataset.edit', id=dataset.name) }}" class="action-btn edit-btn" title="Düzenle">
-                        ✏️ Düzenle
-                      </a>
-                    {% endif %}
-                    {% if h.check_access('package_delete', {'id': dataset.id}) %}
-                      <a href="{{ h.url_for('dataset.delete', id=dataset.name) }}" 
-                         class="action-btn delete-btn" 
-                         title="Sil" 
-                         onclick="return confirm('{{ dataset.title or dataset.name }} veri setini silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!')">
-                        🗑️ Sil
-                      </a>
-                    {% endif %}
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-
-        <!-- Sayfalama -->
-        <div class="pagination-wrapper">
-          {% if page.item_count > datasets|length %}
-            {{ page.pager(q=q) | safe }}
-          {% endif %}
-        </div>
-      {% else %}
-        <div class="empty" style="text-align:center; padding: 60px 20px;">
-          <h3 style="color: #6c757d; margin-bottom: 10px;">Veri seti bulunamadı</h3>
-          <p style="color: #9b98a7;">Bu tema için henüz veri seti bulunmuyor.</p>
-        </div>
-      {% endif %}
-    </div>
-  </section>
 {% endblock %}
 
-{% block secondary_content %}
-  <section class="module module-narrow">
-    <h2 class="module-heading">
-      <i class="fa fa-cog"></i> Tema Yönetimi
-    </h2>
-    <div class="module-content">
-      {% if is_sysadmin or (user_theme_role_for_this_theme and user_theme_role_for_this_theme in ['admin', 'editor']) %}
-        <a href="{{ h.url_for('temalar_sayfasi.edit', slug=slug) }}" class="btn btn-primary btn-block">
-          <i class="fa fa-edit"></i> Temayı Düzenle
-        </a>
-      {% endif %}
-      
-      {% if is_sysadmin or (user_theme_role_for_this_theme and user_theme_role_for_this_theme == 'admin') %}
-        <form action="{{ h.url_for('temalar_sayfasi.delete', slug=slug) }}" method="post" style="margin-top: 10px;">
-          <button type="submit" class="btn btn-danger btn-block" 
-                  onclick="return confirm('{{ tema.name }} temasını silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz ve tema ile ilişkili tüm bağlantılar silinecektir!')">
-            <i class="fa fa-trash"></i> Temayı Sil
-          </button>
-        </form>
-      {% endif %}
-    </div>
-  </section>
-
-  <section class="module module-narrow">
-    <h2 class="module-heading">
-      <i class="fa fa-info-circle"></i> Tema Bilgileri
-    </h2>
-    <div class="module-content">
-      <dl>
-        <dt>Tema Adı</dt>
-        <dd>{{ tema.name }}</dd>
-        
-        <dt>Veri Seti Sayısı</dt>
-        <dd>{{ theme_data.datasets|length if theme_data.datasets else 0 }}</dd>
-        
-        {% if tema.created_at %}
-          <dt>Oluşturulma Tarihi</dt>
-          <dd>{{ h.render_datetime(tema.created_at, date_format='%d.%m.%Y') }}</dd>
-        {% endif %}
-        
-        {% if tema.color %}
-          <dt>Tema Rengi</dt>
-          <dd>
-            <span style="display: inline-block; width: 20px; height: 20px; background-color: {{ tema.color }}; border-radius: 3px; vertical-align: middle; margin-right: 5px;"></span>
-            {{ tema.color }}
-          </dd>
-        {% endif %}
-        
-        {% if tema.icon %}
-          <dt>Tema İkonu</dt>
-          <dd><i class="fa fa-{{ tema.icon }}"></i> {{ tema.icon }}</dd>
-        {% endif %}
-      </dl>
-    </div>
-  </section>
-{% endblock %}
 
 {% block scripts %}
   {{ super() }}
   <script>
-    // Format sınıfını belirle
-    function getFormatClass(format) {
-      if (!format) return 'fmt-other';
-      format = format.toLowerCase();
-      const classes = {
-        'csv': 'fmt-csv',
-        'xls': 'fmt-xls',
-        'xlsx': 'fmt-xls',
-        'json': 'fmt-json',
-        'xml': 'fmt-xml',
-        'pdf': 'fmt-pdf',
-        'shp': 'fmt-shp',
-        'zip': 'fmt-zip',
-        'html': 'fmt-html',
-        'doc': 'fmt-doc',
-        'docx': 'fmt-doc',
-        'txt': 'fmt-txt'
-      };
-      return classes[format] || 'fmt-other';
-    }
+    // Sayfadaki tüm bootstrap tooltip'lerini (ipuçlarını) etkinleştir
+    $(function () {
+      $('[data-toggle="tooltip"]').tooltip()
+    })
   </script>
 {% endblock %}

@@ -17,8 +17,6 @@ import ckan.plugins as p
 import ckan.plugins.toolkit as tk
 from ckan.plugins.toolkit import asbool
 from flask import Blueprint
-from ckan.lib.helpers import Page
-import ckan.lib.helpers as h
 
 # Yeni eklenen modüller
 from ckan.logic import NotAuthorized # Yetkilendirme için
@@ -132,44 +130,22 @@ def read_theme(slug):
 
         context    = {'user': tk.c.user, 'ignore_auth': True}
         theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})
-        
-        # DEBUG: Log the structure of theme_data
-        log.info("Theme data structure: %s", theme_data)
-        log.info("Theme data keys: %s", list(theme_data.keys()) if isinstance(theme_data, dict) else "Not a dict")
-        
-        # Extract the tema object from theme_data
-        tema = None
-        if theme_data and isinstance(theme_data, dict):
-            if 'category' in theme_data:
-                tema = theme_data['category']
-                log.info("Set tema from category: %s", theme_data['category'])
-            else:
-                # Fallback if structure is different - use the theme_data directly
-                tema = theme_data
-                log.info("Set tema from theme_data directly: %s", theme_data)
-        
-        if not tema:
-            # Emergency fallback
-            tema = {
-                'name': slug.replace('-', ' ').title(),
-                'title': slug.replace('-', ' ').title(),
-                'description': 'Tema detayları',
-                'slug': slug
-            }
-            log.warning("Using emergency fallback tema for slug: %s", slug)
+        tk.c.theme_data = theme_data # theme_data'yı şablona aktar
 
         # Kullanıcının sysadmin olup olmadığını kontrol et
         is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin
+        tk.c.is_sysadmin = is_sysadmin # Sysadmin durumunu şablona aktar
 
         # Kullanıcının bu temadaki rolünü belirle
         # Varsayılan olarak None, yetkisiz veya atanmamışsa
-        user_theme_role_for_this_theme = None 
+        tk.c.user_theme_role_for_this_theme = None 
         if not is_sysadmin and tk.c.userobj: # Sadece giriş yapmış sysadmin olmayan kullanıcılar için rolü kontrol et
             user_id = tk.c.userobj.id
             user_themes = tk.get_action('get_user_themes')(context, {'user_id': user_id})
             current_user_assignment = next((t for t in user_themes if t['theme_slug'] == slug), None)
             if current_user_assignment:
-                user_theme_role_for_this_theme = current_user_assignment['role']
+                tk.c.user_theme_role_for_this_theme = current_user_assignment['role']
+
 
         dataset_ids = [ds['id'] for ds in theme_data.get('datasets', [])]
 
@@ -180,7 +156,7 @@ def read_theme(slug):
                 'fq':              fq,
                 'rows':            ITEMS_PER_PAGE,
                 'include_private': True,
-                'start':           (int(tk.request.args.get('page', 1)) - 1) * ITEMS_PER_PAGE
+                'start':           (tk.request.args.get('page', 1) - 1) * ITEMS_PER_PAGE
             })
             packages, total = res['results'], res['count']
 
@@ -192,48 +168,32 @@ def read_theme(slug):
                 self.sort_by_selected = tk.request.args.get('sort', '')
 
                 def _pager(**kw):
-                    try:
-                        page = int(tk.request.args.get('page', 1))
-                        url_params = {'q': self.q, 'sort': self.sort_by_selected}
-                        return tk.h.pager(kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)), 
-                                          self.item_count, ITEMS_PER_PAGE, current_page=page, url_params=url_params)
-                    except Exception as e:
-                        log.error(f"Pager error: {e}")
-                        return ""
+                    page = int(tk.request.args.get('page', 1))
+                    url_params = {'q': self.q, 'sort': self.sort_by_selected}
+                    return tk.h.pager(kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)), 
+                                      self.item_count, ITEMS_PER_PAGE, current_page=page, url_params=url_params)
+
 
                 self.pager = _pager if self.item_count > ITEMS_PER_PAGE \
                              else (lambda **kw: '')
 
-        page = Page(packages, total)
+        tk.c.page = Page(packages, total)
 
         tracking_enabled = asbool(tk.config.get('ckan.tracking_enabled', False))
-        sort_by_options = [
+        tk.c.sort_by_options = [
             (tk._('Relevance'),        'score desc, metadata_modified desc'),
             (tk._('Name Ascending'),   'title_string asc'),
             (tk._('Name Descending'),  'title_string desc'),
             (tk._('Last Modified'),    'metadata_modified desc'),
         ]
         if tracking_enabled:
-            sort_by_options.append((tk._('Popular'), 'views_recent desc'))
+            tk.c.sort_by_options.append((tk._('Popular'), 'views_recent desc'))
 
-        q = tk.request.args.get('q', '')
-        sort_by_selected = tk.request.args.get('sort', '')
-        search_facets = {}
+        tk.c.q = tk.request.args.get('q', '')
+        tk.c.sort_by_selected = tk.request.args.get('sort', '')
+        tk.c.search_facets = {}
 
-        # Pass all variables to template via extra_vars
-        return tk.render('theme/theme_read.html', extra_vars={
-            'tema': tema,
-            'theme_data': theme_data,
-            'datasets': packages,
-            'page': page,
-            'is_sysadmin': is_sysadmin,
-            'user_theme_role_for_this_theme': user_theme_role_for_this_theme,
-            'sort_by_options': sort_by_options,
-            'q': q,
-            'sort_by_selected': sort_by_selected,
-            'search_facets': search_facets,
-            'slug': slug,
-        })
+        return tk.render('theme/theme_read.html')
 
     except tk.ObjectNotFound:
         tk.abort(404, tk._('Tema bulunamadı'))
@@ -241,6 +201,7 @@ def read_theme(slug):
         log.error("Tema yüklenirken hata: %s", e, exc_info=True)
         tk.h.flash_error(tk._(f'Tema yüklenirken bir hata oluştu: {e}'))
         tk.abort(500, tk._('Tema yüklenirken beklenmeyen bir hata oluştu.'))
+
 
 def edit_theme(slug):
     """Tema bilgilerini ve dataset atamalarını düzenler."""
@@ -267,7 +228,7 @@ def edit_theme(slug):
                 is_theme_authorized_for_edit = True
 
     if not is_theme_authorized_for_edit:
-        raise NotAuthorized('Bu temayı düzenlemek için yetkiniz yok.')
+        raise NotAuthorized(_('Bu temayı düzenlemek için yetkiniz yok.'))
 
 
     if tk.request.method == 'GET':
@@ -360,48 +321,10 @@ def delete_theme(slug):
 class TemalarSayfasiPlugin(p.SingletonPlugin):
     p.implements(p.IBlueprint)
     p.implements(p.IConfigurer)
-    p.implements(p.ITemplateHelpers)
 
     # templates/ klasörünü sisteme tanıt
     def update_config(self, config_):
         tk.add_template_directory(config_, 'templates')
-
-    def get_helpers(self):
-        """Template helpers"""
-        return {
-            'temalar_sayfasi_pager': self._pager,
-        }
-
-    def _pager(self, **kw):
-        """Custom pager helper that handles pagination for themes"""
-        try:
-            # Get the current slug from the URL or kwargs
-            slug = kw.get('slug', '')
-            
-            # Build base URL for pagination
-            base_url = kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug))
-            
-            # Get pagination parameters
-            page = kw.get('page', 1)
-            per_page = kw.get('per_page', 20)
-            total = kw.get('total', 0)
-            
-            # Create Page object for pagination
-            from ckan.lib.helpers import Page as CKANPage
-            page_obj = CKANPage(
-                collection=[],  # We don't need the actual collection here
-                page=page,
-                url=base_url,
-                items_per_page=per_page,
-                item_count=total
-            )
-            
-            return page_obj.pager(**kw)
-            
-        except Exception as e:
-            log.error(f"Pager helper error: {e}")
-            # Return empty string if pager fails
-            return ""
 
     def get_blueprint(self):
         bp = Blueprint('temalar_sayfasi', __name__)
