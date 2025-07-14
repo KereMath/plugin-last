@@ -167,7 +167,6 @@ def new_theme():
             # Old image deletion logic (now simplified, as uploader.update_data_dict/upload() handles it mostly)
             # If clear_background_image was true and there was an old file, update_data_dict will have set
             # data_dict['background_image'] to None, and uploader.upload() (if it runs) handles deleting old_filepath.
-            # We explicitly check this in `edit_theme` where there is more complexity.
             # For new_theme, it's simpler: if an image was successfully assigned (data_dict['background_image'] is not None
             # and a file was uploaded), it's considered new.
 
@@ -378,46 +377,43 @@ def edit_theme(slug):
             'clear_background_image': tk.request.form.get('clear_background_image')
         }
 
-        # Handle file upload:
-        new_file_uploaded = False
+        # CRITICAL FIX: Initialize background_image in temp_data_dict with the current path
+        # This value will be updated by uploader.update_data_dict based on file upload or clear action
+        temp_data_dict['background_image'] = current_background_image_path
+        log.info(f"edit_theme (POST): Initializing temp_data_dict['background_image'] with: {temp_data_dict['background_image']}")
+
+
+        # Handle file upload: directly assign the file object if present
         if 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:
             temp_data_dict['background_image_upload'] = tk.request.files['background_image_upload']
-            new_file_uploaded = True
             log.info(f"edit_theme (POST): New file to upload: {temp_data_dict['background_image_upload'].filename}")
         else:
             temp_data_dict['background_image_upload'] = None
             log.info("edit_theme (POST): No new file provided in request.")
 
-        # Determine the background_image path to pass to theme_category_update
-        # If no new file is uploaded AND 'clear_background_image' is NOT checked,
-        # we preserve the current_background_image_path.
-        if not new_file_uploaded and temp_data_dict['clear_background_image'] != 'true':
-            temp_data_dict['background_image'] = current_background_image_path
-            log.info(f"edit_theme (POST): No new file or explicit clear, retaining current background_image: {current_background_image_path}")
-        else:
-            # If a new file is uploaded OR clear is checked, let uploader's update_data_dict manage it.
-            # In this case, initialize with the form's potentially empty 'background_image' value if no new file.
-            temp_data_dict['background_image'] = tk.request.form.get('background_image') # This will be empty string if no existing image or if form didn't send it.
-
-
         try:
+            # Get the uploader instance, passing the original (current) filename.
+            # uploader.get_uploader automatically sets self.old_filepath based on this.
             upload = uploader.get_uploader('theme_background', old_filename=current_background_image_path)
             log.debug(f"edit_theme (POST): Uploader initialized with old_filename: {current_background_image_path}")
 
-            # This call modifies temp_data_dict to set the correct 'background_image' path
-            # (either new uploaded file path, None if cleared, or the original if no change)
+            # This call is CRITICAL. It processes `background_image_upload` and `clear_background_image`.
+            # If a new file is uploaded, it sets `temp_data_dict['background_image']` to the new path.
+            # If `clear_background_image` is 'true', it sets `temp_data_dict['background_image']` to None.
+            # If neither, it retains the original value in `temp_data_dict['background_image']` (which we correctly set above).
             upload.update_data_dict(temp_data_dict,
                                     url_field='background_image',
                                     file_field='background_image_upload',
                                     clear_field='clear_background_image')
             
-            # Use the modified temp_data_dict as the final data_dict for the action
+            # The 'data_dict' passed to the action must be the one modified by uploader.update_data_dict
             data_dict = temp_data_dict
 
             log.info(f"edit_theme (POST): After update_data_dict, final data_dict['background_image'] is: {data_dict.get('background_image')}")
 
-            if upload.filename: # Only call upload() if there's a new filename to write
-                upload.upload() # This method uses self.filepath (set by update_data_dict) to save the file
+            # Only perform the physical upload if there's a new file to write (upload.filename would be set by update_data_dict)
+            if upload.filename:
+                upload.upload()
                 log.info(f"edit_theme (POST): File physically uploaded to storage path. Final filename: {upload.filename}")
             else:
                 log.info("edit_theme (POST): No file to physically upload (either no new file or cleared).")
