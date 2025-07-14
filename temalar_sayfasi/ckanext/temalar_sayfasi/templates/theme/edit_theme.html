@@ -496,7 +496,7 @@
         {# Mevcut görsel varsa önizlemesini göster ve temizle butonu ekle #}
         {% if c.theme_data.category.background_image %}
         <div class="background-image-preview-wrapper" id="current-bg-image-wrapper">
-            <img src="{{ h.image_url(c.theme_data.category.background_image) }}" alt="{{ _('Mevcut Arka Plan Görseli') }}" class="background-image-preview">
+          <img src="/uploads/theme_background/{{ c.theme_data.category.background_image }}" alt="{{ _('Mevcut Arka Plan Görseli') }}" class="background-image-preview">
             <button type="button" class="btn btn-clear-image" id="clear_background_image">
                 <i class="fa fa-times-circle"></i> {{ _('Görseli Kaldır') }}
             </button>
