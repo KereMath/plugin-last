@@ -377,10 +377,11 @@ def edit_theme(slug):
             'clear_background_image': tk.request.form.get('clear_background_image')
         }
 
-        # CRITICAL FIX: Initialize background_image in temp_data_dict with the current path
+        # CRITICAL FIX START: Initialize background_image in temp_data_dict with the current path
         # This value will be updated by uploader.update_data_dict based on file upload or clear action
         temp_data_dict['background_image'] = current_background_image_path
         log.info(f"edit_theme (POST): Initializing temp_data_dict['background_image'] with: {temp_data_dict['background_image']}")
+        # CRITICAL FIX END
 
 
         # Handle file upload: directly assign the file object if present
