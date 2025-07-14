@@ -425,12 +425,40 @@
     .loading {
       animation: pulse 1.5s infinite;
     }
+
+    /* Image preview and clear button styles */
+    .background-image-preview-wrapper {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .background-image-preview {
+        max-width: 150px;
+        max-height: 150px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        object-fit: cover;
+    }
+    .btn-clear-image {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.3s ease;
+    }
+    .btn-clear-image:hover {
+        background-color: #c82333;
+    }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 {% endblock %}
 
 {% block primary_content %}
-<form method="post" id="theme-edit-form">
+<form method="post" id="theme-edit-form" enctype="multipart/form-data"> {# Add enctype for file upload #}
   <div class="module">
     <div class="module-content">
       <h1 class="page-heading">{{ _('Tema Bilgilerini Düzenle') }}</h1>
@@ -461,9 +489,20 @@
       </div>
 
       <div class="form-group">
-        <label for="background_image" class="control-label">{{ _('Arka Plan Görseli URL') }}</label>
-        <input type="text" id="background_image" name="background_image" class="form-control" value="{{ c.data.background_image or c.theme_data.category.background_image }}" placeholder="örn: /images/bg_tema_1.jpg veya http://example.com/image.png">
-        <p class="help-block">{{ _('Tema başlığının arkasında görünecek görselin URL\'si.') }}</p>
+        <label for="background_image_upload" class="control-label">{{ _('Arka Plan Görseli Yükle') }}</label>
+        <input type="file" id="background_image_upload" name="background_image_upload" class="form-control">
+        <p class="help-block">{{ _('Tema başlığının arkasında görünecek bir görsel yükleyin.') }}</p>
+        
+        {# Mevcut görsel varsa önizlemesini göster ve temizle butonu ekle #}
+        {% if c.theme_data.category.background_image %}
+        <div class="background-image-preview-wrapper" id="current-bg-image-wrapper">
+            <img src="{{ c.theme_data.category.background_image }}" alt="{{ _('Mevcut Arka Plan Görseli') }}" class="background-image-preview">
+            <button type="button" class="btn btn-clear-image" id="clear_background_image">
+                <i class="fa fa-times-circle"></i> {{ _('Görseli Kaldır') }}
+            </button>
+            <input type="hidden" name="clear_background_image" id="clear_background_image_hidden" value="false">
+        </div>
+        {% endif %}
       </div>
 
     </div>
@@ -507,7 +546,7 @@
             <label>{{ _('Temaya Atananlar') }}</label>
             <span id="assigned-counter" class="counter"></span>
           </div>
-          <select id="assigned-datasets" name="dataset_ids" multiple class="form-control dataset-list">
+          <select id="assigned-datasets" name="dataset_ids" multiple class class="form-control dataset-list">
             {% for dataset in c.theme_data.datasets %}
               <option value="{{ dataset.id }}">{{ dataset.title }}</option>
             {% endfor %}
@@ -603,6 +642,23 @@
       });
 
       updateCounters();
+
+      // Clear background image functionality for edit_theme.html
+      const clearImageButton = document.getElementById('clear_background_image');
+      const clearImageHiddenInput = document.getElementById('clear_background_image_hidden');
+      const currentBgImageWrapper = document.getElementById('current-bg-image-wrapper');
+
+      if (clearImageButton && clearImageHiddenInput && currentBgImageWrapper) {
+          clearImageButton.addEventListener('click', function() {
+              clearImageHiddenInput.value = 'true'; // Set hidden input to true to signal removal
+              currentBgImageWrapper.style.display = 'none'; // Hide the preview
+              // Optionally, clear the file input if user wants to upload a new one
+              const fileInput = document.getElementById('background_image_upload');
+              if (fileInput) {
+                  fileInput.value = ''; // Clear selected file
+              }
+          });
+      }
     });
 
     // Delete Modal Functions
