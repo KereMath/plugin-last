@@ -86,11 +86,6 @@
       {% else %}
         <p class="empty-message">{{ _('Bu temada henüz veri seti bulunmamaktadır.') }}</p>
       {% endif %}
-
-      {# Sayfalama kontrolleri - Bu kalacak #}
-      {% if c.page.pager %}
-        {{ c.page.pager(q=c.q) | safe }}
-      {% endif %}
     </div>
   </div>
 {% endblock %}
