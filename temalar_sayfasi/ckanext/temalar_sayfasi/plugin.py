@@ -17,11 +17,17 @@ import ckan.plugins as p
 import ckan.plugins.toolkit as tk
 from ckan.plugins.toolkit import asbool
 from flask import Blueprint
-import ckan.lib.helpers as h
 
 # Yeni eklenen modüller
 from ckan.logic import NotAuthorized # Yetkilendirme için
 import ckan.model as model # Kullanıcı modeline erişim için
+
+# Explicitly import ckan.lib.helpers and assign pager to tk.h
+# This addresses "AttributeError: module 'ckan.lib.helpers' has no attribute 'pager'"
+# and ensures tk.h.pager is available for the Page class.
+import ckan.lib.helpers as _helpers
+tk.h.pager = _helpers.pager
+
 
 log = logging.getLogger(__name__)
 
@@ -169,9 +175,10 @@ def read_theme(slug):
                 self.sort_by_selected = tk.request.args.get('sort', '')
 
                 def _pager(**kw):
-                    page = int(tk.request.args.get('page', 1)) # Re-type this line
+                    page = int(tk.request.args.get('page', 1)) 
                     url_params = {'q': self.q, 'sort': self.sort_by_selected}
-                    return h.pager(kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)),
+                    # Use tk.h.pager, which is now explicitly assigned above
+                    return tk.h.pager(kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)),
                                     self.item_count, ITEMS_PER_PAGE, current_page=page, url_params=url_params)
 
                 self.pager = _pager if self.item_count > ITEMS_PER_PAGE \
