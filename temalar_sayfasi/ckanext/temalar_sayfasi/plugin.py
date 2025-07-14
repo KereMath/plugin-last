@@ -3,12 +3,12 @@
 ckanext-temalar_sayfasi.plugin
 
 Tema (category) yönetimi:
-  • /temalar                – tema listesi (HERKES TÜM TEMALARI GÖRÜR)
-  • /temalar/yeni           – yeni tema oluştur
-  • /temalar/<slug>         – tema detay + veri setleri
-  • /temalar/<slug>/edit    – düzenle
-  • /temalar/<slug>/delete  – sil
-  • /dashboard/temalar      – KULLANICIYA ÖZEL TEMA LİSTESİ (YENİ)
+  • /temalar                – tema listesi (HERKES TÜM TEMALARI GÖRÜR)
+  • /temalar/yeni           – yeni tema oluştur
+  • /temalar/<slug>         – tema detay + veri setleri
+  • /temalar/<slug>/edit    – düzenle
+  • /temalar/<slug>/delete  – sil
+  • /dashboard/temalar      – KULLANICIYA ÖZEL TEMA LİSTESİ (YENİ)
 """
 
 import logging
@@ -118,6 +118,7 @@ def new_theme():
             'description': tk.request.form.get('description'),
             'color':        tk.request.form.get('color'),
             'icon':         tk.request.form.get('icon'),
+            'opacity':      float(tk.request.form.get('opacity', 1.0)), # YENİ EKLENDİ: opacity'yi al
             # Pass original filename for the uploader (it will modify this)
             'background_image': tk.request.form.get('background_image'), # This might be old path on GET
             'clear_background_image': tk.request.form.get('clear_background_image')
@@ -371,6 +372,7 @@ def edit_theme(slug):
             'description': tk.request.form.get('description'),
             'color':        tk.request.form.get('color'),
             'icon':         tk.request.form.get('icon'),
+            'opacity':      float(tk.request.form.get('opacity', 1.0)), # YENİ EKLENDİ: opacity'yi al
             'background_image': tk.request.form.get('background_image'), # This is the existing image path from form if any
             'clear_background_image': tk.request.form.get('clear_background_image') # True/False based on checkbox
         }
