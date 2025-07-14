@@ -116,6 +116,7 @@ def new_theme():
     if tk.request.method == 'POST':
         # Dosya yükleyiciyi başlat
         upload = uploader.get_uploader('theme_background') # 'theme_background' gibi özel bir prefix kullanabiliriz
+        upload.clear = False # ADDED: Ensure 'clear' attribute exists to prevent AttributeError in uploader.py
         
         data_dict = {
             'slug':        tk.request.form.get('slug'),
@@ -145,14 +146,14 @@ def new_theme():
             tk.c.errors, tk.c.data = e.error_dict, data_dict
             # Hata durumunda yüklenen dosyayı temizle
             if uploaded_file_obj and upload.filepath and os.path.exists(upload.filepath):
-                 os.remove(upload.filepath) # Use upload.filepath for direct removal
+                 os.remove(upload.filepath) # Use upload.filepath for direct removal
         except Exception as e:
             log.error(f"Yeni tema oluşturulurken hata: {e}", exc_info=True)
             tk.h.flash_error(tk._(f'Tema oluşturulurken beklenmeyen bir hata oluştu: {e}'))
             tk.c.data = data_dict # Verileri formda tut
             # Hata durumunda yüklenen dosyayı temizle
             if uploaded_file_obj and upload.filepath and os.path.exists(upload.filepath):
-                 os.remove(upload.filepath) # Use upload.filepath for direct removal
+                 os.remove(upload.filepath) # Use upload.filepath for direct removal
 
 
     return tk.render('theme/new_theme.html')
@@ -318,6 +319,7 @@ def edit_theme(slug):
     if tk.request.method == 'POST':
         # Dosya yükleyiciyi başlat
         upload = uploader.get_uploader('theme_background')
+        upload.clear = False # ADDED: Ensure 'clear' attribute exists to prevent AttributeError in uploader.py
         
         update_data = {
             'slug':        slug,
@@ -380,14 +382,14 @@ def edit_theme(slug):
             tk.h.flash_error(str(e))
             # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
             if uploaded_file_obj and upload.filepath and os.path.exists(upload.filepath):
-                 os.remove(upload.filepath) # Use upload.filepath for direct removal
+                 os.remove(upload.filepath) # Use upload.filepath for direct removal
         except Exception as e:
             log.error(f"Tema güncellenirken hata: {e}", exc_info=True)
             tk.h.flash_error(tk._(f'Bir hata oluştu: {e}'))
             tk.c.data = tk.request.form
             # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
             if uploaded_file_obj and upload.filepath and os.path.exists(upload.filepath):
-                 os.remove(upload.filepath) # Use upload.filepath for direct removal
+                 os.remove(upload.filepath) # Use upload.filepath for direct removal
 
 
     try:
