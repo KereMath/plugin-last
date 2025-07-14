@@ -119,7 +119,6 @@ def new_theme():
             'description': tk.request.form.get('description'),
             'color':       tk.request.form.get('color'),
             'icon':        tk.request.form.get('icon'),
-            # background_image uploader tarafından yönetilecek
         }
 
         # Yükleme ve temizleme için geçici bir data_dict oluştur
@@ -142,15 +141,16 @@ def new_theme():
         except tk.ValidationError as e:
             tk.c.errors, tk.c.data = e.error_dict, data_dict
             # Hata durumunda yüklenen dosyayı temizle
-            if data_dict.get('background_image'): # Eğer bir yol atanmışsa
-                 upload.clear(data_dict['background_image'])
+            # update_data_dict zaten background_image'ı güncelledi, bu yüzden onu kullanmalıyız.
+            if upload_data_dict.get('background_image'):
+                 upload.clear(upload_data_dict['background_image'])
         except Exception as e:
             log.error(f"Yeni tema oluşturulurken hata: {e}", exc_info=True)
             tk.h.flash_error(tk._(f'Tema oluşturulurken beklenmeyen bir hata oluştu: {e}'))
             tk.c.data = data_dict 
             # Hata durumunda yüklenen dosyayı temizle
-            if data_dict.get('background_image'): # Eğer bir yol atanmışsa
-                 upload.clear(data_dict['background_image'])
+            if upload_data_dict.get('background_image'):
+                 upload.clear(upload_data_dict['background_image'])
 
 
     return tk.render('theme/new_theme.html')
@@ -365,22 +365,23 @@ def edit_theme(slug):
             tk.c.errors, tk.c.data = e.error_dict, tk.request.form
             tk.h.flash_error(str(e))
             # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
-            # Buradaki kontrolü daha güvenli hale getiriyoruz:
-            # Sadece yeni bir dosya yüklenmişse (ki bu hata ile sonuçlandıysa) o dosyayı temizle
-            if tk.request.files.get('background_image_upload') and tk.request.files['background_image_upload'].filename:
-                # Eğer yeni bir dosya yüklenmeye çalışıldıysa ve hata verdiyse, yükleyici bunu temizlemeye çalışsın.
-                # Ancak upload.clear() sadece geçerli bir yolla çalışır, bu yüzden upload_data_dict'teki son değeri kullanırız.
-                if upload_data_dict.get('background_image') != current_background_image_path: # Yeni bir yol atanmışsa
-                    upload.clear(upload_data_dict['background_image'])
+            # update_data_dict zaten background_image'ı güncelledi, bu yüzden onu kullanmalıyız.
+            if upload_data_dict.get('background_image') and \
+               tk.request.files.get('background_image_upload') and \
+               tk.request.files['background_image_upload'].filename and \
+               upload_data_dict['background_image'] != current_background_image_path:
+                upload.clear(upload_data_dict['background_image'])
 
         except Exception as e:
             log.error(f"Tema güncellenirken hata: {e}", exc_info=True)
             tk.h.flash_error(tk._(f'Bir hata oluştu: {e}'))
             tk.c.data = tk.request.form
-            # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle (yukarıdaki mantıkla aynı)
-            if tk.request.files.get('background_image_upload') and tk.request.files['background_image_upload'].filename:
-                if upload_data_dict.get('background_image') != current_background_image_path:
-                    upload.clear(upload_data_dict['background_image'])
+            # Hata durumunda, eğer yeni dosya yüklendiyse onu temizle
+            if upload_data_dict.get('background_image') and \
+               tk.request.files.get('background_image_upload') and \
+               tk.request.files['background_image_upload'].filename and \
+               upload_data_dict['background_image'] != current_background_image_path:
+                upload.clear(upload_data_dict['background_image'])
 
 
     try:
