@@ -134,12 +134,27 @@ def read_theme(slug):
         theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})
         tk.c.theme_data = theme_data # theme_data'yı şablona aktar
         
+        # DEBUG: Log the structure of theme_data
+        log.info("Theme data structure: %s", theme_data)
+        log.info("Theme data keys: %s", list(theme_data.keys()) if isinstance(theme_data, dict) else "Not a dict")
+        
         # CRITICAL FIX: Use 'tema' instead of 'theme' to avoid conflict with CKAN's theme assets
-        if theme_data and 'category' in theme_data:
-            tk.c.tema = theme_data['category']
+        if theme_data and isinstance(theme_data, dict):
+            if 'category' in theme_data:
+                tk.c.tema = theme_data['category']
+                log.info("Set tema from category: %s", theme_data['category'])
+            else:
+                # Fallback if structure is different - use the theme_data directly
+                tk.c.tema = theme_data
+                log.info("Set tema from theme_data directly: %s", theme_data)
         else:
-            # Fallback if structure is different
-            tk.c.tema = theme_data
+            # Emergency fallback
+            tk.c.tema = {
+                'title': slug.replace('-', ' ').title(),
+                'description': 'Tema detayları',
+                'slug': slug
+            }
+            log.warning("Using emergency fallback tema for slug: %s", slug)
 
         # Kullanıcının sysadmin olup olmadığını kontrol et
         is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin
@@ -180,17 +195,8 @@ def read_theme(slug):
                     try:
                         page = int(tk.request.args.get('page', 1))
                         url_params = {'q': self.q, 'sort': self.sort_by_selected}
-                        
-                        # Use CKAN's built-in Page class for proper pagination
-                        from ckan.lib.helpers import Page as CKANPage
-                        page_obj = CKANPage(
-                            collection=items,
-                            page=page,
-                            url=kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)),
-                            items_per_page=ITEMS_PER_PAGE,
-                            item_count=item_count
-                        )
-                        return page_obj.pager(**kw)
+                        return tk.h.pager(kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug)), 
+                                          self.item_count, ITEMS_PER_PAGE, current_page=page, url_params=url_params)
                     except Exception as e:
                         log.error(f"Pager error: {e}")
                         return ""
@@ -223,7 +229,6 @@ def read_theme(slug):
         log.error("Tema yüklenirken hata: %s", e, exc_info=True)
         tk.h.flash_error(tk._(f'Tema yüklenirken bir hata oluştu: {e}'))
         tk.abort(500, tk._('Tema yüklenirken beklenmeyen bir hata oluştu.'))
-
 
 def edit_theme(slug):
     """Tema bilgilerini ve dataset atamalarını düzenler."""
