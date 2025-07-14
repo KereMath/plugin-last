@@ -3,12 +3,12 @@
 ckanext-temalar_sayfasi.plugin
 
 Tema (category) yönetimi:
-  • /temalar                – tema listesi (HERKES TÜM TEMALARI GÖRÜR)
-  • /temalar/yeni           – yeni tema oluştur
-  • /temalar/<slug>         – tema detay + veri setleri
-  • /temalar/<slug>/edit    – düzenle
-  • /temalar/<slug>/delete  – sil
-  • /dashboard/temalar      – KULLANICIYA ÖZEL TEMA LİSTESİ (YENİ)
+  • /temalar                – tema listesi (HERKES TÜM TEMALARI GÖRÜR)
+  • /temalar/yeni           – yeni tema oluştur
+  • /temalar/<slug>         – tema detay + veri setleri
+  • /temalar/<slug>/edit    – düzenle
+  • /temalar/<slug>/delete  – sil
+  • /dashboard/temalar      – KULLANICIYA ÖZEL TEMA LİSTESİ (YENİ)
 """
 
 import logging
@@ -355,7 +355,7 @@ def edit_theme(slug):
             tk.abort(500, tk._(f"Sayfa yüklenirken bir hata oluştu: {e}"))
 
         all_ds = tk.get_action('package_search')(context, {
-            'rows':          1000,
+            'rows':            1000,
             'include_private': True
         })
         tk.c.all_datasets = all_ds['results']
