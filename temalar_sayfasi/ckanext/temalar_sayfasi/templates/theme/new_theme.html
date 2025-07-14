@@ -333,7 +333,8 @@
     .form-group:nth-child(3) { animation-delay: 0.3s; }
     .form-group:nth-child(4) { animation-delay: 0.4s; }
     .form-group:nth-child(5) { animation-delay: 0.5s; }
-    .form-group:nth-child(6) { animation-delay: 0.6s; } /* background_image alanı için gecikme */
+    .form-group:nth-child(6) { animation-delay: 0.6s; }
+    .form-group:nth-child(7) { animation-delay: 0.7s; } /* opacity alanı için gecikme */
 
 
     @keyframes fadeInUp {
@@ -383,6 +384,49 @@
       to { transform: rotate(360deg); }
     }
 
+    /* Styles for opacity slider */
+    .range-slider-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .range-slider {
+        width: 100%;
+        -webkit-appearance: none;
+        height: 10px;
+        border-radius: 5px;
+        background: #d3d3d3;
+        outline: none;
+        opacity: 0.7;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+    }
+    .range-slider:hover {
+        opacity: 1;
+    }
+    .range-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--neon-blue); /* Neon blue for theme */
+        cursor: pointer;
+        box-shadow: 0 0 5px rgba(0, 212, 255, 0.5); /* Matching glow */
+    }
+    .range-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--neon-blue); /* Neon blue for theme */
+        cursor: pointer;
+        box-shadow: 0 0 5px rgba(0, 212, 255, 0.5); /* Matching glow */
+    }
+    .opacity-value {
+        font-weight: bold;
+        color: var(--neon-blue); /* Use neon blue for display text */
+    }
+
     /* Responsive Design */
     @media (max-width: 768px) {
       .module-content {
@@ -421,7 +465,7 @@
     <div class="module-content">
       <h1 class="page-heading" data-text="{{ _('YENİ TEMA OLUŞTUR') }}">{{ _('YENİ TEMA OLUŞTUR') }}</h1>
 
-      <form class="form-horizontal" method="post" enctype="multipart/form-data"> {# Add enctype for file upload #}
+      <form class="form-horizontal" method="post" enctype="multipart/form-data">
         {% if c.errors %}
           <div class="alert alert-danger">
             <strong>{{ _('Lütfen formdaki hataları düzeltin:') }}</strong>
@@ -483,6 +527,17 @@
           </div>
         </div>
 
+        <div class="form-group"> {# Add opacity field #}
+          <label for="opacity" class="col-sm-2 control-label">{{ _('Arka Plan Görseli Opaklığı') }}</label>
+          <div class="col-sm-10">
+            <div class="range-slider-wrapper">
+              <input type="range" id="opacity" name="opacity" class="form-control range-slider" min="0" max="1" step="0.01" value="{{ c.data.opacity or 1.0 }}">
+              <span id="opacity-value-display" class="opacity-value">1.00</span>
+            </div>
+            <p class="help-block">{{ _('Arka plan görselinin opaklığını ayarlayın (0.00 - 1.00 arası).') }}</p>
+          </div>
+        </div>
+
         <div class="form-group">
           <div class="col-sm-offset-2 col-sm-10">
             <div class="form-actions">
@@ -537,6 +592,22 @@
         slugInput.value = slug;
       }
     });
+
+    // Opacity slider functionality for new_theme.html
+    document.addEventListener('DOMContentLoaded', function() {
+        const opacitySlider = document.getElementById('opacity');
+        const opacityValueDisplay = document.getElementById('opacity-value-display');
+
+        if (opacitySlider && opacityValueDisplay) {
+            // Initialize display with current value
+            opacityValueDisplay.textContent = parseFloat(opacitySlider.value).toFixed(2);
+
+            opacitySlider.addEventListener('input', function() {
+                opacityValueDisplay.textContent = parseFloat(this.value).toFixed(2);
+            });
+        }
+    });
+
 
     // Form submission animation
     document.querySelector('form').addEventListener('submit', function() {
