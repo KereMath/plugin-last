@@ -27,7 +27,6 @@ import ckan.common
 
 import ckan.lib.helpers as _helpers
 tk.h.pager_url = _helpers.pager_url
-tk.h.image_url = _helpers.image_url
 
 
 log = logging.getLogger(__name__)
