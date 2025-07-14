@@ -3,12 +3,12 @@
 ckanext-temalar_sayfasi.plugin
 
 Tema (category) yönetimi:
-  • /temalar                – tema listesi (HERKES TÜM TEMALARI GÖRÜR)
-  • /temalar/yeni           – yeni tema oluştur
-  • /temalar/<slug>         – tema detay + veri setleri
-  • /temalar/<slug>/edit    – düzenle
-  • /temalar/<slug>/delete  – sil
-  • /dashboard/temalar      – KULLANICIYA ÖZEL TEMA LİSTESİ (YENİ)
+  • /temalar                – tema listesi (HERKES TÜM TEMALARI GÖRÜR)
+  • /temalar/yeni           – yeni tema oluştur
+  • /temalar/<slug>         – tema detay + veri setleri
+  • /temalar/<slug>/edit    – düzenle
+  • /temalar/<slug>/delete  – sil
+  • /dashboard/temalar      – KULLANICIYA ÖZEL TEMA LİSTESİ (YENİ)
 """
 
 import logging
@@ -27,7 +27,6 @@ import ckan.common
 
 import ckan.lib.helpers as _helpers
 tk.h.pager_url = _helpers.pager_url
-# tk.h.image_url = _helpers.image_url # Bu satır kaldırıldı veya yorum satırı yapıldı
 
 
 log = logging.getLogger(__name__)
@@ -116,25 +115,13 @@ def new_theme():
         data_dict = {
             'slug':         tk.request.form.get('slug'),
             'name':         tk.request.form.get('name'),
-            'description':  tk.request.form.get('description'),
+            'description': tk.request.form.get('description'),
             'color':        tk.request.form.get('color'),
             'icon':         tk.request.form.get('icon'),
             # Pass original filename for the uploader (it will modify this)
             'background_image': tk.request.form.get('background_image'), # This might be old path on GET
             'clear_background_image': tk.request.form.get('clear_background_image')
         }
-
-        # Opacity değeri ekleme ve float'a çevirme
-        try:
-            opacity_str = tk.request.form.get('opacity')
-            if opacity_str is not None:
-                data_dict['opacity'] = float(opacity_str)
-            else:
-                data_dict['opacity'] = 1.0 # Varsayılan değer
-        except ValueError:
-            tk.c.errors['opacity'] = [tk._('Geçerli bir şeffaflık değeri girin (örn: 0.5, 1.0).')]
-            tk.c.data = data_dict
-            return tk.render('theme/new_theme.html')
 
         # IMPORTANT: Directly pass the uploaded file object to data_dict
         # The uploader expects to find the file here to process it.
@@ -367,7 +354,7 @@ def edit_theme(slug):
             tk.abort(500, tk._(f"Sayfa yüklenirken bir hata oluştu: {e}"))
 
         all_ds = tk.get_action('package_search')(context, {
-            'rows':            1000,
+            'rows':          1000,
             'include_private': True
         })
         tk.c.all_datasets = all_ds['results']
@@ -387,25 +374,6 @@ def edit_theme(slug):
             'background_image': tk.request.form.get('background_image'), # This is the existing image path from form if any
             'clear_background_image': tk.request.form.get('clear_background_image') # True/False based on checkbox
         }
-
-        # Opacity değeri ekleme ve float'a çevirme
-        try:
-            opacity_str = tk.request.form.get('opacity')
-            if opacity_str is not None:
-                data_dict['opacity'] = float(opacity_str)
-            else:
-                # If opacity is not provided in form, use existing value or default to 1.0
-                # This ensures we don't accidentally set opacity to None if user doesn't touch the field
-                current_theme_full_data = tk.get_action('theme_category_show')(context, {'slug': slug})
-                data_dict['opacity'] = current_theme_full_data['category'].get('opacity', 1.0)
-        except ValueError:
-            tk.c.errors['opacity'] = [tk._('Geçerli bir şeffaflık değeri girin (örn: 0.5, 1.0).')]
-            tk.c.data = data_dict
-            # Re-fetch theme data and datasets to re-render the form correctly
-            tk.c.theme_data = tk.get_action('theme_category_show')({}, {'slug': slug})
-            all_ds = tk.get_action('package_search')(context, {'rows': 1000, 'include_private': True})
-            tk.c.all_datasets = all_ds['results']
-            return tk.render('theme/edit_theme.html')
 
         # IMPORTANT: Pass the actual uploaded file object into data_dict under the correct key
         if 'background_image_upload' in tk.request.files and tk.request.files['background_image_upload'].filename:

@@ -32,7 +32,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background:
+      background: 
         radial-gradient(circle at 20% 80%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
         radial-gradient(circle at 80% 20%, rgba(153, 69, 255, 0.1) 0%, transparent 50%),
         radial-gradient(circle at 40% 40%, rgba(0, 255, 136, 0.05) 0%, transparent 50%);
@@ -83,7 +83,7 @@
       border-radius: 30px;
       overflow: hidden;
       position: relative;
-      box-shadow:
+      box-shadow: 
         0 8px 32px rgba(0, 212, 255, 0.1),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
@@ -182,7 +182,7 @@
     .form-control:focus {
       outline: none;
       background: rgba(0, 212, 255, 0.1);
-      box-shadow:
+      box-shadow: 
         0 0 30px rgba(0, 212, 255, 0.3),
         inset 0 0 20px rgba(0, 212, 255, 0.05);
       transform: translateY(-2px);
@@ -334,7 +334,6 @@
     .form-group:nth-child(4) { animation-delay: 0.4s; }
     .form-group:nth-child(5) { animation-delay: 0.5s; }
     .form-group:nth-child(6) { animation-delay: 0.6s; } /* background_image alanı için gecikme */
-    .form-group:nth-child(7) { animation-delay: 0.7s; } /* opacity alanı için gecikme */
 
 
     @keyframes fadeInUp {
@@ -389,20 +388,20 @@
       .module-content {
         padding: 40px 20px;
       }
-
+      
       .page-heading {
         font-size: 32px;
         letter-spacing: 2px;
       }
-
+      
       .row {
         flex-direction: column;
       }
-
+      
       .col-sm-2, .col-sm-10 {
         width: 100%;
       }
-
+      
       .col-sm-offset-2 {
         margin-left: 0;
       }
@@ -484,16 +483,6 @@
           </div>
         </div>
 
-        {# Yeni Opacity alanı eklendi #}
-        <div class="form-group">
-          <label for="opacity" class="col-sm-2 control-label">{{ _('Arka Plan Görseli Şeffaflığı') }}</label>
-          <div class="col-sm-10">
-            <input type="number" id="opacity" name="opacity" class="form-control"
-                   min="0.0" max="1.0" step="0.01" value="{{ c.data.opacity | default('1.0') }}">
-            <p class="help-block">{{ _('Arka plan görselinin şeffaflığı (0.0 tam şeffaf, 1.0 tam opak).') }}</p>
-          </div>
-        </div>
-
         <div class="form-group">
           <div class="col-sm-offset-2 col-sm-10">
             <div class="form-actions">
@@ -519,7 +508,7 @@
     document.getElementById('icon').addEventListener('input', function(e) {
       const iconPreview = document.getElementById('icon-preview');
       const iconName = e.target.value.trim();
-
+      
       if (iconName) {
         iconPreview.className = 'icon-preview fa fa-' + iconName;
         iconPreview.classList.add('fa-spin');

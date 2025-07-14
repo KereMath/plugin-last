@@ -1,277 +1,680 @@
 {% extends "page.html" %}
 
-{# Sayfa başlığını dinamik olarak temanın adıyla ayarla #}
-{% block subtitle %}{{ c.theme_data.category.name }}{% endblock %}
+{% block subtitle %}{{ _('Tema Konfigürasyonu') }}: {{ c.theme_data.category.name }}{% endblock %}
 
 {% block styles %}
   {{ super() }}
   <style>
-    /* CKAN'ın varsayılan başlığını ve açıklamasını gizle - "Sağlık" gibi başlıkları kaldırır */
-    section.module .module-content h1.page-heading,
-    section.module .module-content p {
-      display: none !important;
+    :root {
+      --light-bg: #f8f9fa;
+      --light-surface: #ffffff;
+      --light-surface-dark: #e9ecef;
+      --primary-blue: #007bff;
+      --primary-green: #28a745;
+      --primary-red: #dc3545;
+      --text-primary: #000000;
+      --text-secondary: #6c757d;
+      --glow-intensity: 5px;
+      --danger-color: #dc3545;
+      --danger-glow: rgba(220, 53, 69, 0.3);
     }
 
-    /* "Bu Temadaki Veri Setleri" başlığını gizle */
-
-
-    /* Mevcut fab-edit-theme butonu için orijinal stilini koru */
-    .fab-edit-theme {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      z-index: 1100;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background-color: #28a745;
-      color: white;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      transition: all 0.3s ease;
-    }
-    .fab-edit-theme:hover {
-      background-color: #218838;
-      transform: scale(1.1);
+    body {
+      background: var(--light-bg);
     }
 
-    /* Montserrat Font Tanımı (global olduğu varsayımıyla) */
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
-    body, html, * {
-        font-family: 'Montserrat', sans-serif !important;
+    /* Module Styles */
+    .module {
+      background: linear-gradient(135deg, var(--light-surface) 0%, #f1f3f4 100%);
+      border: 1px solid #dee2e6;
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 30px;
     }
 
-    /* Görsel önizleme için stil */
-    .background-image-preview-wrapper {
-      margin-top: 10px;
-      border: 1px solid #ccc;
-      padding: 5px;
-      border-radius: 5px;
-      background-color: #f9f9f9;
-      display: inline-block;
+    .module::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary-blue), transparent);
+      animation: scan 3s linear infinite;
     }
 
-    .background-image-preview {
-      max-width: 200px;
-      height: auto;
+    @keyframes scan {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .module-content {
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+    }
+
+    .page-heading, .module-heading {
+      font-family: 'Orbitron', monospace;
+      background: linear-gradient(45deg, var(--primary-blue), var(--primary-green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 30px;
+      font-weight: 900;
+    }
+
+    /* Form Controls */
+    .form-group {
+      margin-bottom: 30px;
+    }
+
+    .control-label {
+      color: var(--text-primary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 12px;
+      margin-bottom: 10px;
       display: block;
     }
 
-    .clear-image-checkbox {
-      margin-top: 10px;
+    .form-control {
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px solid #dee2e6;
+      color: var(--text-primary);
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+      background: rgba(255, 255, 255, 1);
+      border-color: var(--primary-blue);
+      box-shadow: 0 0 var(--glow-intensity) rgba(0, 123, 255, 0.3);
+      outline: none;
+    }
+
+    /* Dataset Manager */
+    .dataset-manager {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 30px;
+      margin-top: 20px;
+      padding: 30px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(240, 248, 255, 0.8) 100%);
+      border: 1px solid #dee2e6;
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dataset-manager::after {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, var(--primary-blue), var(--primary-green), var(--primary-red));
+      border-radius: 20px;
+      opacity: 0.1;
+      z-index: -1;
+      animation: gradient-rotate 4s linear infinite;
+    }
+
+    @keyframes gradient-rotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .dataset-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #dee2e6;
+      border-radius: 15px;
+      padding: 20px;
+      position: relative;
+    }
+
+    .dataset-col .col-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #dee2e6;
+    }
+
+    .dataset-col label {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin: 0;
+    }
+
+    .dataset-col .counter {
+      background: linear-gradient(45deg, var(--primary-blue), var(--primary-green));
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 14px;
+      color: white;
+      box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+    }
+
+    .search-box-wrapper {
+      position: relative;
+      margin-bottom: 15px;
+    }
+
+    .search-box-wrapper .input-group-addon {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      z-index: 10;
+    }
+
+    .search-box {
+      width: 100%;
+      padding-left: 45px !important;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #dee2e6;
+      color: var(--text-primary);
+    }
+
+    /* List */
+    .dataset-list {
+      height: 400px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #dee2e6;
+      border-radius: 10px;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .dataset-list option {
+      padding: 12px;
+      margin-bottom: 5px;
+      background: rgba(248, 249, 250, 0.8);
+      border: 1px solid transparent;
+      border-radius: 5px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      color: var(--text-primary);
+    }
+
+    .dataset-list option:hover {
+      background: rgba(0, 123, 255, 0.1);
+      border-color: var(--primary-blue);
+      box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+      transform: translateX(5px);
+    }
+
+    .dataset-list option:selected {
+      background: rgba(40, 167, 69, 0.2);
+      border-color: var(--primary-green);
+      box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+    }
+
+    /* Scrollbar */
+    .dataset-list::-webkit-scrollbar {
+      width: 10px;
+    }
+    .dataset-list::-webkit-scrollbar-track {
+      background: rgba(233, 236, 239, 0.5);
+      border-radius: 5px;
+    }
+    .dataset-list::-webkit-scrollbar-thumb {
+      background: linear-gradient(45deg, var(--primary-blue), var(--primary-green));
+      border-radius: 5px;
+    }
+
+    /* Control Buttons */
+    .control-buttons {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .control-buttons .btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 15px;
+      border: 2px solid;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .control-buttons .btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 70%);
+      transition: all 0.3s ease;
+      transform: translate(-50%, -50%);
+    }
+
+    .control-buttons .btn:hover::before {
+      width: 100px;
+      height: 100px;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(0, 123, 255, 0.2));
+      border-color: var(--primary-green);
+      color: var(--primary-green);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, rgba(220, 53, 69, 0.2), rgba(255, 193, 7, 0.2));
+      border-color: var(--primary-red);
+      color: var(--primary-red);
+    }
+
+    .btn-success:hover {
+      box-shadow: 0 0 15px rgba(40, 167, 69, 0.4), inset 0 0 10px rgba(40, 167, 69, 0.2);
+      transform: scale(1.1);
+    }
+
+    .btn-danger:hover {
+      box-shadow: 0 0 15px rgba(220, 53, 69, 0.4), inset 0 0 10px rgba(220, 53, 69, 0.2);
+      transform: scale(1.1);
+    }
+
+    /* Action Buttons */
+    .form-actions {
+      display: flex;
+      gap: 20px;
+      margin-top: 40px;
+      padding: 30px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 248, 255, 0.8));
+      border-radius: 15px;
+      border: 1px solid #dee2e6;
+    }
+
+    .btn-primary {
+      background: linear-gradient(45deg, var(--primary-blue), var(--primary-green));
+      border: none;
+      color: white;
+      padding: 15px 40px;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border-radius: 50px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 123, 255, 0.3);
+    }
+
+    .btn-delete {
+      background: linear-gradient(45deg, var(--danger-color), #c82333);
+      border: none;
+      color: white;
+      padding: 15px 40px;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border-radius: 50px;
+      transition: all 0.3s ease;
+      margin-left: auto;
+    }
+
+    .btn-delete:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px var(--danger-glow);
+      background: linear-gradient(45deg, #dc3545, #bd2130);
+    }
+
+    .btn-default {
+      background: transparent;
+      border: 2px solid #6c757d;
+      color: var(--text-secondary);
+      padding: 15px 40px;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border-radius: 50px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-default:hover {
+      border-color: var(--text-primary);
+      color: var(--text-primary);
+      box-shadow: 0 0 10px rgba(108, 117, 125, 0.3);
+    }
+
+    /* Delete Confirmation Modal */
+    .delete-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .delete-modal-content {
+      background: linear-gradient(135deg, var(--light-surface) 0%, #f1f3f4 100%);
+      border: 2px solid var(--danger-color);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 0 30px var(--danger-glow);
+    }
+
+    .delete-modal h3 {
+      color: var(--danger-color);
+      font-size: 24px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .delete-modal p {
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+
+    .delete-modal-actions {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    /* Loading Animation */
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    .loading {
+      animation: pulse 1.5s infinite;
+    }
+
+    /* Image preview and clear button styles */
+    .background-image-preview-wrapper {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .background-image-preview {
+        max-width: 150px;
+        max-height: 150px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        object-fit: cover;
+    }
+    .btn-clear-image {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.3s ease;
+    }
+    .btn-clear-image:hover {
+        background-color: #c82333;
     }
   </style>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 {% endblock %}
 
 {% block primary_content %}
-  {# Sistem yöneticisi, tema yöneticisi veya tema editörü ise, düzenleme butonu sağ altta sabit olarak görünür #}
-  {% if c.is_sysadmin or (c.user_theme_role_for_this_theme and c.user_theme_role_for_this_theme in ['admin', 'editor']) %}
-    <a href="{{ h.url_for('temalar_sayfasi.edit', slug=c.theme_data.category.slug) }}"
-       class="fab-edit-theme"
-       data-toggle="tooltip"
-       data-placement="left"
-       title="{{ _('Temayı Yönet') }}"> {# Orijinal metin ve tooltip korunur #}
-       <i class="fa fa-cog"></i> {# Çark ikonu korunur #}
-    </a>
-  {% endif %}
-
-  <section class="module">
+<form method="post" id="theme-edit-form" enctype="multipart/form-data"> {# Add enctype for file upload #}
+  <div class="module">
     <div class="module-content">
-      <h1 class="page-heading">
-        {% if c.theme_data.category.icon %}
-          <i class="fa fa-{{ c.theme_data.category.icon }}" style="color:{{ c.theme_data.category.color }}; margin-right: 15px;"></i>
+      <h1 class="page-heading">{{ _('Tema Bilgilerini Düzenle') }}</h1>
+      
+      <div class="form-group">
+        <label for="name" class="control-label">{{ _('Tema Adı') }} *</label>
+        <input type="text" id="name" name="name" class="form-control" value="{{ c.data.name or c.theme_data.category.name }}" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="description" class="control-label">{{ _('Açıklama') }}</label>
+        <textarea id="description" name="description" class="form-control" rows="3">{{ c.data.description or c.theme_data.category.description }}</textarea>
+      </div>
+      
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label for="color" class="control-label">{{ _('Renk Kodu') }}</label>
+            <input type="color" id="color" name="color" class="form-control" value="{{ c.data.color or c.theme_data.category.color }}">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label for="icon" class="control-label">{{ _('FontAwesome İkonu') }}</label>
+            <input type="text" id="icon" name="icon" class="form-control" value="{{ c.data.icon or c.theme_data.category.icon }}" placeholder="örn: fa-heart, fa-car, fa-leaf">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="background_image_upload" class="control-label">{{ _('Arka Plan Görseli Yükle') }}</label>
+        <input type="file" id="background_image_upload" name="background_image_upload" class="form-control">
+        <p class="help-block">{{ _('Tema başlığının arkasında görünecek bir görsel yükleyin.') }}</p>
+        
+        {# Mevcut görsel varsa önizlemesini göster ve temizle butonu ekle #}
+        {% if c.theme_data.category.background_image %}
+        <div class="background-image-preview-wrapper" id="current-bg-image-wrapper">
+          <img src="/uploads/theme_background/{{ c.theme_data.category.background_image }}" alt="{{ _('Mevcut Arka Plan Görseli') }}" class="background-image-preview">
+            <button type="button" class="btn btn-clear-image" id="clear_background_image">
+                <i class="fa fa-times-circle"></i> {{ _('Görseli Kaldır') }}
+            </button>
+            <input type="hidden" name="clear_background_image" id="clear_background_image_hidden" value="false">
+        </div>
         {% endif %}
-        {{ c.theme_data.category.name }}
-      </h1>
-      {% if c.theme_data.category.description %}
-        <p>{{ c.theme_data.category.description }}</p>
-      {% endif %}
+      </div>
 
-      <form class="form-horizontal" method="post" enctype="multipart/form-data">
-        {% if c.errors %}
-          <div class="alert alert-danger">
-            <strong>{{ _('Lütfen formdaki hataları düzeltin:') }}</strong>
-            <ul>
-            {% for field, error_list in c.errors.items() %}
-              {% for error in error_list %}
-                <li><strong>{{ field }}:</strong> {{ error }}</li>
-              {% endfor %}
-            {% endfor %}
-            </ul>
-          </div>
-        {% endif %}
-
-        <div class="form-group">
-          <label for="slug" class="col-sm-2 control-label">{{ _('Kısa İsim (Slug)') }} *</label>
-          <div class="col-sm-10">
-            <input type="text" id="slug" name="slug" class="form-control" value="{{ c.data.slug or '' }}" required readonly>
-            <p class="help-block">{{ _('Slug değiştirilemez.') }}</p>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="name" class="col-sm-2 control-label">{{ _('Tema Adı') }} *</label>
-          <div class="col-sm-10">
-            <input type="text" id="name" name="name" class="form-control" value="{{ c.data.name or '' }}" required>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="description" class="col-sm-2 control-label">{{ _('Açıklama') }}</label>
-          <div class="col-sm-10">
-            <textarea id="description" name="description" class="form-control" rows="3">{{ c.data.description or '' }}</textarea>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="color" class="col-sm-2 control-label">{{ _('Renk Kodu') }}</label>
-          <div class="col-sm-2">
-            <input type="color" id="color" name="color" class="form-control" value="{{ c.data.color or '#333333' }}">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="icon" class="col-sm-2 control-label">{{ _('FontAwesome İkonu') }}</label>
-          <div class="col-sm-10">
-            <div class="icon-preview-wrapper">
-              <input type="text" id="icon" name="icon" class="form-control" value="{{ c.data.icon or '' }}" placeholder="örn: heart, car, leaf">
-              <i id="icon-preview" class="icon-preview fa"></i>
-            </div>
-            <p class="help-block">{{ _("Sadece ikon adını yazın. Örn: 'chart-line'") }}</p>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="background_image_upload" class="col-sm-2 control-label">{{ _('Arka Plan Görseli') }}</label>
-          <div class="col-sm-10">
-            {% if c.data.background_image %}
-              <div class="background-image-preview-wrapper">
-                <img src="/uploads/theme_background/{{ c.data.background_image }}" alt="{{ _('Mevcut Arka Plan Görseli') }}" class="background-image-preview" style="opacity: {{ c.data.opacity | default(1.0) }};">
-                <p>{{ _('Mevcut Görsel') }}</p>
-              </div>
-              <label class="checkbox clear-image-checkbox">
-                <input type="checkbox" name="clear_background_image" value="True"> {{ _('Mevcut görseli sil') }}
-              </label>
-              <input type="hidden" name="background_image" value="{{ c.data.background_image }}"> {# Mevcut görselin yolunu saklarız #}
-            {% else %}
-              <p>{{ _('Mevcut arka plan görseli yok.') }}</p>
-            {% endif %}
-            <input type="file" id="background_image_upload" name="background_image_upload" class="form-control">
-            <p class="help-block">{{ _('Tema başlığının arkasında görünecek bir görsel yükleyin veya mevcut olanı güncelleyin.') }}</p>
-          </div>
-        </div>
-
-        {# Yeni Opacity alanı eklendi #}
-        <div class="form-group">
-          <label for="opacity" class="col-sm-2 control-label">{{ _('Arka Plan Görseli Şeffaflığı') }}</label>
-          <div class="col-sm-10">
-            <input type="number" id="opacity" name="opacity" class="form-control"
-                   min="0.0" max="1.0" step="0.01" value="{{ c.data.opacity | default('1.0') }}">
-            <p class="help-block">{{ _('Arka plan görselinin şeffaflığı (0.0 tam şeffaf, 1.0 tam opak).') }}</p>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="col-sm-2 control-label">{{ _('Veri Setleri') }}</label>
-          <div class="col-sm-10">
-            <select multiple="multiple" name="dataset_ids" class="form-control" style="height: 200px;">
-              {% set current_dataset_ids = c.theme_data.datasets | map(attribute='id') | list %}
-              {% for dataset in c.all_datasets %}
-                <option value="{{ dataset.id }}"
-                        {% if dataset.id in current_dataset_ids %} selected="selected" {% endif %}>
-                  {{ dataset.title or dataset.name }}
-                </option>
-              {% endfor %}
-            </select>
-            <p class="help-block">{{ _('Bu temaya ait veri setlerini seçin.') }}</p>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <div class="col-sm-offset-2 col-sm-10">
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">
-                <i class="fa fa-save"></i> {{ _('Değişiklikleri Kaydet') }}
-              </button>
-              <a href="{{ h.url_for('temalar_sayfasi.read', slug=c.data.slug) }}" class="btn btn-default">
-                <i class="fa fa-times"></i> {{ _('İptal') }}
-              </a>
-              {# Sadece sistem yöneticileri temayı silebilir #}
-              {% if c.is_sysadmin %}
-                <button type="button" class="btn btn-danger pull-right" data-toggle="modal" data-target="#deleteThemeModal">
-                  <i class="fa fa-trash"></i> {{ _('Temayı Sil') }}
-                </button>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-      </form>
     </div>
-  </section>
+  </div>
 
-  {# Silme Onayı Modalı #}
-  <div class="modal fade" id="deleteThemeModal" tabindex="-1" role="dialog" aria-labelledby="deleteThemeModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="deleteThemeModalLabel">{{ _('Temayı Silmeyi Onayla') }}</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
+  <div class="module">
+    <div class="module-content">
+      <h2 class="module-heading">{{ _('Veri Seti Matrisi') }}</h2>
+      
+      <div class="dataset-manager">
+        <div class="dataset-col">
+          <div class="col-header">
+            <label>{{ _('Havuz') }}</label>
+            <span id="available-counter" class="counter"></span>
+          </div>
+          <div class="search-box-wrapper">
+            <span class="input-group-addon"><i class="fa fa-search"></i></span>
+            <input type="text" id="search-box" class="form-control search-box" placeholder="{{ _('Veri setlerini filtrele...') }}">
+          </div>
+          <select id="available-datasets" multiple class="form-control dataset-list">
+            {% set assigned_ids = c.theme_data.datasets|map(attribute='id')|list %}
+            {% for dataset in c.all_datasets %}
+              {% if dataset.id not in assigned_ids %}
+                <option value="{{ dataset.id }}">{{ dataset.title }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="control-buttons">
+          <button type="button" id="btn-add" class="btn btn-success" title="{{ _('Ata') }}">
+            <i class="fa fa-arrow-right"></i>
+          </button>
+          <button type="button" id="btn-remove" class="btn btn-danger" title="{{ _('Ayır') }}">
+            <i class="fa fa-arrow-left"></i>
           </button>
         </div>
-        <div class="modal-body">
-          {{ _('Bu temayı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.') }}
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">{{ _('İptal') }}</button>
-          <form action="{{ h.url_for('temalar_sayfasi.delete', slug=c.data.slug) }}" method="post" style="display: inline;">
-            <button type="submit" class="btn btn-danger">{{ _('Sil') }}</button>
-          </form>
+
+        <div class="dataset-col">
+          <div class="col-header">
+            <label>{{ _('Temaya Atananlar') }}</label>
+            <span id="assigned-counter" class="counter"></span>
+          </div>
+          <select id="assigned-datasets" name="dataset_ids" multiple class class="form-control dataset-list">
+            {% for dataset in c.theme_data.datasets %}
+              <option value="{{ dataset.id }}">{{ dataset.title }}</option>
+            {% endfor %}
+          </select>
         </div>
       </div>
     </div>
   </div>
 
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">
+      <i class="fa fa-save"></i> {{ _('Konfigürasyonu Kaydet') }}
+    </button>
+    <a href="{{ h.url_for('temalar_sayfasi.read', slug=c.theme_data.category.slug) }}" class="btn btn-default">
+      <i class="fa fa-times"></i> {{ _('İptal') }}
+    </a>
+    <button type="button" class="btn btn-delete" style="color:black !important;" onclick="showDeleteModal()">
+      <i class="fa fa-trash"></i> {{ _('Temayı Sil') }}
+    </button>
+  </div>
+</form>
+
+<div id="delete-modal" class="delete-modal">
+  <div class="delete-modal-content">
+    <h3><i class="fa fa-exclamation-triangle"></i> {{ _('Tema Silinecek!') }}</h3>
+    <p>{{ _('Bu temayı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm veri seti atamaları da silinecektir.') }}</p>
+    <p><strong>{{ c.theme_data.category.name }}</strong></p>
+    <div class="delete-modal-actions">
+      <button type="button" class="btn btn-default" onclick="hideDeleteModal()">
+        {{ _('İptal') }}
+      </button>
+      <form method="post" action="{{ h.url_for('temalar_sayfasi.delete', slug=c.theme_data.category.slug) }}" style="display: inline;">
+        <button type="submit" class="btn btn-delete">
+          <i class="fa fa-trash"></i> {{ _('Evet, Sil') }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
   <script>
-    // Icon Preview
-    document.getElementById('icon').addEventListener('input', function(e) {
-      const iconPreview = document.getElementById('icon-preview');
-      const iconName = e.target.value.trim();
+    document.addEventListener('DOMContentLoaded', function() {
+      const available = document.getElementById('available-datasets');
+      const assigned = document.getElementById('assigned-datasets');
+      const btnAdd = document.getElementById('btn-add');
+      const btnRemove = document.getElementById('btn-remove');
+      const form = document.getElementById('theme-edit-form');
+      const searchBox = document.getElementById('search-box');
+      const availableCounter = document.getElementById('available-counter');
+      const assignedCounter = document.getElementById('assigned-counter');
 
-      if (iconName) {
-        iconPreview.className = 'icon-preview fa fa-' + iconName;
-        iconPreview.classList.add('fa-spin');
-        setTimeout(() => {
-          iconPreview.classList.remove('fa-spin');
-        }, 500);
-      } else {
-        iconPreview.className = 'icon-preview fa';
+      function updateCounters() {
+        const availableVisibleCount = Array.from(available.options).filter(opt => opt.style.display !== 'none').length;
+        const availableTotalCount = available.options.length;
+        
+        if (searchBox.value) {
+            availableCounter.textContent = `${availableVisibleCount} / ${availableTotalCount}`;
+        } else {
+            availableCounter.textContent = `${availableTotalCount}`;
+        }
+        
+        assignedCounter.textContent = `${assigned.options.length}`;
+      }
+
+      function moveOptions(source, destination) {
+        Array.from(source.selectedOptions).forEach(option => {
+          destination.appendChild(option);
+        });
+        updateCounters();
+        searchBox.value = '';
+        searchBox.dispatchEvent(new Event('input'));
+      }
+
+      btnAdd.addEventListener('click', () => moveOptions(available, assigned));
+      btnRemove.addEventListener('click', () => moveOptions(assigned, available));
+      
+      searchBox.addEventListener('input', function() {
+        const filter = this.value.toLowerCase();
+        Array.from(available.options).forEach(option => {
+          const text = option.textContent.toLowerCase();
+          option.style.display = text.includes(filter) ? '' : 'none';
+        });
+        updateCounters();
+      });
+
+      form.addEventListener('submit', function() {
+        for (let i = 0; i < assigned.options.length; i++) {
+          assigned.options[i].selected = true;
+        }
+      });
+
+      updateCounters();
+
+      // Clear background image functionality for edit_theme.html
+      const clearImageButton = document.getElementById('clear_background_image');
+      const clearImageHiddenInput = document.getElementById('clear_background_image_hidden');
+      const currentBgImageWrapper = document.getElementById('current-bg-image-wrapper');
+
+      if (clearImageButton && clearImageHiddenInput && currentBgImageWrapper) {
+          clearImageButton.addEventListener('click', function() {
+              clearImageHiddenInput.value = 'true'; // Set hidden input to true to signal removal
+              currentBgImageWrapper.style.display = 'none'; // Hide the preview
+              // Optionally, clear the file input if user wants to upload a new one
+              const fileInput = document.getElementById('background_image_upload');
+              if (fileInput) {
+                  fileInput.value = ''; // Clear selected file
+              }
+          });
       }
     });
 
-    // Trigger icon preview on page load if value exists
-    const iconInput = document.getElementById('icon');
-    if (iconInput.value) {
-      iconInput.dispatchEvent(new Event('input'));
+    // Delete Modal Functions
+    function showDeleteModal() {
+      document.getElementById('delete-modal').style.display = 'flex';
     }
 
-    // Initialize select2 for dataset multi-select
-    $(document).ready(function() {
-        $('select[name="dataset_ids"]').select2();
-    });
+    function hideDeleteModal() {
+      document.getElementById('delete-modal').style.display = 'none';
+    }
 
-    // Form submission animation
-    document.querySelector('form').addEventListener('submit', function() {
-      const submitBtn = document.querySelector('.btn-primary');
-      submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> {{ _("Kaydediliyor...") }}';
-      submitBtn.disabled = true;
+    // Close modal when clicking outside
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        hideDeleteModal();
+      }
     });
   </script>
 {% endblock %}
