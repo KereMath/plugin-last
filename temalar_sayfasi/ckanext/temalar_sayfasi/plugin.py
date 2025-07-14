@@ -25,7 +25,7 @@ import ckan.model as model # Kullanıcı modeline erişim için
 # Explicitly import ckan.lib.helpers and assign pager_url to tk.h
 # This ensures tk.h.pager_url is available for the Page class.
 import ckan.lib.helpers as _helpers
-tk.h.pager_url = _helpers.pager_url # <-- CHANGED from pager to pager_url
+tk.h.pager_url = _helpers.pager_url
 
 
 log = logging.getLogger(__name__)
@@ -173,117 +173,45 @@ def read_theme(slug):
                 self.q              = tk.request.args.get('q', '')
                 self.sort_by_selected = tk.request.args.get('sort', '')
 
-                def _pager(**kw):
-                    page = int(tk.request.args.get('page', 1)) 
-                    url_params = {'q': self.q, 'sort': self.sort_by_selected}
-                    # Use tk.h.pager_url, which is now explicitly assigned above
-                    # Note: pager_url takes different arguments than older 'pager'
-                    # It returns a URL, not the full HTML.
-                    # We need to construct the pager HTML ourselves or pass enough info to the template.
-                    
-                    # For a simple URL generation in Python:
-                    base_url = kw.get('base_url', tk.url_for('temalar_sayfasi.read', slug=slug))
-                    # tk.h.pager_url takes (item_count, items_per_page, page_number, base_url, **kwargs)
-                    return tk.h.pager_url(self.item_count, ITEMS_PER_PAGE, page, base_url=base_url, **url_params)
-
-
-                # The `Page` class's `pager` method should return the HTML, not just a URL.
-                # Since tk.h.pager_url returns just a URL component, we need a way
-                # to render the full pager in the template using this URL.
-                # A simpler approach for the Python side is to pass all necessary
-                # data to the template and let the template render the pager.
-                # Or, if we must provide a callable 'pager' attribute that returns HTML,
-                # we'd need to mock CKAN's internal pager HTML rendering.
-                # For now, let's assume `c.page.pager` in the template expects the
-                # *same arguments* as tk.h.pager, and we pass it tk.h.pager_url.
-                # This might still cause an issue if the template expects full HTML.
-
-                # Reverting to the previous _pager definition, but with pager_url
-                # and recognizing that the template might expect different arguments for `c.page.pager`
-                # if it's meant to call tk.h.pager directly.
-
-                # Let's simplify: c.page.pager should be the `_pager` method if total items > items per page.
-                # The template expects `c.page.pager(q=c.q)`. This means `_pager` needs to produce
-                # the *full HTML* of the pager, not just a URL fragment.
-
-                # This is the tricky part. The old 'pager' helper produced HTML.
-                # 'pager_url' produces just a URL.
-
-                # Option 1: Pass relevant data to the template and render pager HTML in the template.
-                # This is the standard CKAN way, but your plugin.py is setting c.page.pager itself.
-                # So we must adapt.
-
-                # Option 2: Build a basic HTML pager in Python (less ideal for maintainability).
-                # Option 3: Find if there's another helper that renders the HTML pager.
-
-                # Given the error is `module 'ckan.lib.helpers' has no attribute 'pager'`,
-                # and we found `pager_url`, the most direct fix is to adapt the call.
-                # However, the template expects `c.page.pager(...)`, which implies a function that *returns* HTML.
-                # tk.h.pager_url returns a URL.
-
-                # Let's try to adapt the `Page` class's `pager` attribute to return the *result*
-                # of tk.h.pager_url. This will only return a URL, and the template might break.
-                # So the better approach is that the `Page` class itself needs to become a proxy
-                # for generating the pager HTML, similar to how CKAN's core does it.
-
-                # Let's adjust the `_pager` function to directly call the correct helper,
-                # but we need to ensure the template's `c.page.pager` receives what it expects.
-
-                # Re-thinking the `Page` class. The `c.page.pager` in `theme_read.html` is calling
-                # `c.page.pager(q=c.q)`. This means `c.page.pager` is expected to be a callable
-                # that takes `q` and returns HTML for the pager.
-
-                # Instead of assigning `_pager` directly, let's assign a lambda that calls `tk.h.pager_url`
-                # but the template itself needs to be updated to use pager_url.
-                # Since the traceback points to `c.page.pager(q=c.q)`, the `Page` class needs to provide
-                # a callable named `pager` that can construct the HTML or call another helper to do so.
-
-                # There's no direct `tk.h.pager` equivalent if it was removed/renamed.
-                # The standard way to paginate in CKAN templates is `c.page.pager(base_url, item_count, items_per_page, current_page, **kwargs)`.
-                # If the template is using `c.page.pager(q=c.q)`, it implies a custom pager object.
-
-                # Let's provide a *mock* pager function if the original `tk.h.pager` is truly gone.
-                # This will print an error message instead of crashing.
-                # This is a temporary solution to get it running and confirm the helper name.
-
-                # Given that `pager_url` exists, perhaps the template can be adapted.
-                # But for a Python-side fix to match `c.page.pager(q=c.q)`:
-
-                # Option 1: Simple HTML generation if the standard helper is gone or complicated.
-                # This is a fallback if the pager helper structure changed drastically.
+                # Helper function to generate full pager HTML
                 def _generate_pager_html(base_url, item_count, items_per_page, current_page, q=''):
                     total_pages = (item_count + items_per_page - 1) // items_per_page
                     if total_pages <= 1:
                         return ''
                     
                     html_parts = []
-                    # Simple Previous button
+                    
+                    # Previous button
                     if current_page > 1:
-                        prev_url = tk.h.pager_url(item_count, items_per_page, current_page - 1, base_url=base_url, q=q)
+                        prev_url = tk.h.pager_url(base_url, current_page - 1, q=q)
                         html_parts.append(f'<li class="previous"><a href="{prev_url}">« Previous</a></li>')
                     
                     # Page numbers
+                    # CKAN's default pager usually shows a limited range of pages around current_page
+                    # For simplicity, we'll show all pages here, but you might want to implement a more complex logic
+                    # like `h.pager` does (e.g., `max_page_numbers=5`).
                     for i in range(1, total_pages + 1):
-                        page_url = tk.h.pager_url(item_count, items_per_page, i, base_url=base_url, q=q)
+                        page_url = tk.h.pager_url(base_url, i, q=q)
                         active_class = 'active' if i == current_page else ''
                         html_parts.append(f'<li class="{active_class}"><a href="{page_url}">{i}</a></li>')
                     
-                    # Simple Next button
+                    # Next button
                     if current_page < total_pages:
-                        next_url = tk.h.pager_url(item_count, items_per_page, current_page + 1, base_url=base_url, q=q)
+                        next_url = tk.h.pager_url(base_url, current_page + 1, q=q)
                         html_parts.append(f'<li class="next"><a href="{next_url}">Next »</a></li>')
                     
+                    # Wrap in standard Bootstrap pagination classes for basic styling
                     return '<div class="pagination"><ul>' + ''.join(html_parts) + '</ul></div>'
 
 
-                # Now, the `pager` attribute of the `Page` class needs to call this `_generate_pager_html`
-                # function with the correct parameters.
-                # The template calls `c.page.pager(q=c.q)`. So our `self.pager` needs to accept `q`.
-                # Let's modify `_pager` definition to match what the template calls.
-                def _pager_callable(q_param=''): # Name it distinct to avoid confusion
+                # This is the callable assigned to c.page.pager in the template
+                def _pager_callable(**kwargs): 
+                    q_param = kwargs.get('q', '') # Extract 'q'
+                    
                     current_page_from_request = int(tk.request.args.get('page', 1))
                     base_url_for_pager = tk.url_for('temalar_sayfasi.read', slug=slug)
                     
+                    # Call our HTML generator
                     return _generate_pager_html(
                         base_url=base_url_for_pager,
                         item_count=self.item_count,
@@ -291,9 +219,9 @@ def read_theme(slug):
                         current_page=current_page_from_request,
                         q=q_param
                     )
-                self.pager = _pager_callable if self.item_count > ITEMS_PER_PAGE else (lambda **kw: '')
                 
-                # END of Page class refactor
+                # Assign the callable to self.pager
+                self.pager = _pager_callable if self.item_count > ITEMS_PER_PAGE else (lambda **kw: '')
 
 
         tk.c.page = Page(packages, total)
