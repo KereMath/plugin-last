@@ -185,22 +185,19 @@ def read_theme(slug): # <-- slug is received here
                     
                     # Previous button
                     if current_page > 1:
-                        # tk.h.pager_url(endpoint_name, page_number, route_param=value, query_param=value)
-                        prev_url = tk.h.pager_url(endpoint_name, current_page - 1, slug=slug_param, q=q)
+                        # tk.h.pager_url(endpoint_name, page=page_number, route_param=value, query_param=value)
+                        prev_url = tk.h.pager_url(endpoint_name, page=current_page - 1, slug=slug_param, q=q) # Explicitly 'page='
                         html_parts.append(f'<li class="previous"><a href="{prev_url}">« Previous</a></li>')
                     
                     # Page numbers
-                    # CKAN's default pager usually shows a limited range of pages around current_page
-                    # For simplicity, we'll show all pages here, but you might want to implement a more complex logic
-                    # like `h.pager` does (e.g., `max_page_numbers=5`).
                     for i in range(1, total_pages + 1):
-                        page_url = tk.h.pager_url(endpoint_name, i, slug=slug_param, q=q)
+                        page_url = tk.h.pager_url(endpoint_name, page=i, slug=slug_param, q=q) # Explicitly 'page='
                         active_class = 'active' if i == current_page else ''
-                        html_parts.append(f'<li class="{active_class}"><a href="{page_url}">{i}</a></li>') # Re-added active_class correctly
+                        html_parts.append(f'<li class="{active_class}"><a href="{page_url}">{i}</a></li>')
                     
                     # Next button
                     if current_page < total_pages:
-                        next_url = tk.h.pager_url(endpoint_name, current_page + 1, slug=slug_param, q=q)
+                        next_url = tk.h.pager_url(endpoint_name, page=current_page + 1, slug=slug_param, q=q) # Explicitly 'page='
                         html_parts.append(f'<li class="next"><a href="{next_url}">Next »</a></li>')
                     
                     # Wrap in standard Bootstrap pagination classes for basic styling
@@ -213,7 +210,7 @@ def read_theme(slug): # <-- slug is received here
                     
                     current_page_from_request = int(tk.request.args.get('page', 1))
                     
-                    # Call our HTML generator with the endpoint name and slug
+                    # Call our HTML generator
                     return _generate_pager_html(
                         endpoint_name='temalar_sayfasi.read', # Explicitly pass endpoint name
                         item_count=self.item_count,
