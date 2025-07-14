@@ -459,6 +459,13 @@
           </div>
         </div>
       </div>
+
+      <div class="form-group">
+        <label for="background_image" class="control-label">{{ _('Arka Plan Görseli URL') }}</label>
+        <input type="text" id="background_image" name="background_image" class="form-control" value="{{ c.data.background_image or c.theme_data.category.background_image }}" placeholder="örn: /images/bg_tema_1.jpg veya http://example.com/image.png">
+        <p class="help-block">{{ _('Tema başlığının arkasında görünecek görselin URL\'si.') }}</p>
+      </div>
+
     </div>
   </div>
 
@@ -523,7 +530,6 @@
   </div>
 </form>
 
-<!-- Delete Confirmation Modal -->
 <div id="delete-modal" class="delete-modal">
   <div class="delete-modal-content">
     <h3><i class="fa fa-exclamation-triangle"></i> {{ _('Tema Silinecek!') }}</h3>

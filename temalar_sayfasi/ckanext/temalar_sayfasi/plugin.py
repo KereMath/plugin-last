@@ -116,6 +116,7 @@ def new_theme():
             'description': tk.request.form.get('description'),
             'color':       tk.request.form.get('color'),
             'icon':        tk.request.form.get('icon'),
+            'background_image': tk.request.form.get('background_image'), # YENİ EKLENDİ
         }
         try:
             tk.get_action('theme_category_create')(context, data_dict)
