@@ -1,19 +1,19 @@
 {% extends "page.html" %}
 
-{% block subtitle %}{{ theme.title }}{% endblock %}
+{% block subtitle %}{{ tema.title }}{% endblock %}
 
 {% block breadcrumb_content %}
   <li><a href="{{ h.url_for('temalar_sayfasi.index') }}">Temalar</a></li>
-  <li class="active">{{ theme.title }}</li>
+  <li class="active">{{ tema.title }}</li>
 {% endblock %}
 
 {% block primary_content %}
   <section class="module">
     <div class="module-content">
-      <h1 class="page-heading">{{ theme.title }}</h1>
+      <h1 class="page-heading">{{ tema.title }}</h1>
       
-      {% if theme.description %}
-        <p class="theme-description">{{ theme.description }}</p>
+      {% if tema.description %}
+        <p class="theme-description">{{ tema.description }}</p>
       {% endif %}
 
       {% if datasets %}
@@ -68,11 +68,11 @@
     <div class="module-content">
       <dl>
         <dt>Tema Adı</dt>
-        <dd>{{ theme.title }}</dd>
+        <dd>{{ tema.title }}</dd>
         
-        {% if theme.dataset_count %}
+        {% if tema.dataset_count %}
           <dt>Veri Seti Sayısı</dt>
-          <dd>{{ theme.dataset_count }}</dd>
+          <dd>{{ tema.dataset_count }}</dd>
         {% endif %}
       </dl>
     </div>

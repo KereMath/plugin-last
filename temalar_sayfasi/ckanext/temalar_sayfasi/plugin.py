@@ -134,12 +134,12 @@ def read_theme(slug):
         theme_data = tk.get_action('theme_category_show')(context, {'slug': slug})
         tk.c.theme_data = theme_data # theme_data'yı şablona aktar
         
-        # CRITICAL FIX: Template expects 'theme' variable, not 'theme_data'
+        # CRITICAL FIX: Use 'tema' instead of 'theme' to avoid conflict with CKAN's theme assets
         if theme_data and 'category' in theme_data:
-            tk.c.theme = theme_data['category']
+            tk.c.tema = theme_data['category']
         else:
             # Fallback if structure is different
-            tk.c.theme = theme_data
+            tk.c.tema = theme_data
 
         # Kullanıcının sysadmin olup olmadığını kontrol et
         is_sysadmin = tk.c.userobj and tk.c.userobj.sysadmin
