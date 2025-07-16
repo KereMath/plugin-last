@@ -12,6 +12,8 @@
       --primary-blue: #007bff;
       --primary-green: #28a745;
       --primary-red: #dc3545;
+      --primary-orange: #fd7e14;
+      --primary-purple: #6f42c1;
       --text-primary: #000000;
       --text-secondary: #6c757d;
       --glow-intensity: 5px;
@@ -98,70 +100,63 @@
       outline: none;
     }
 
-    /* Dataset Manager */
+    /* Enhanced Dataset Manager */
     .dataset-manager {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
       gap: 30px;
       margin-top: 20px;
-      padding: 30px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(240, 248, 255, 0.8) 100%);
-      border: 1px solid #dee2e6;
-      border-radius: 20px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .dataset-manager::after {
-      content: '';
-      position: absolute;
-      top: -2px;
-      left: -2px;
-      right: -2px;
-      bottom: -2px;
-      background: linear-gradient(45deg, var(--primary-blue), var(--primary-green), var(--primary-red));
-      border-radius: 20px;
-      opacity: 0.1;
-      z-index: -1;
-      animation: gradient-rotate 4s linear infinite;
-    }
-
-    @keyframes gradient-rotate {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .dataset-col {
-      flex: 1;
-      display: flex;
       flex-direction: column;
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid #dee2e6;
-      border-radius: 15px;
-      padding: 20px;
-      position: relative;
     }
 
-    .dataset-col .col-header {
+    .dataset-panel {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 248, 255, 0.9) 100%);
+      border: 1px solid #dee2e6;
+      border-radius: 20px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .dataset-panel.expanded {
+      box-shadow: 0 10px 30px rgba(0, 123, 255, 0.1);
+    }
+
+    .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 15px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.9);
       border-bottom: 2px solid #dee2e6;
+      cursor: pointer;
+      user-select: none;
     }
 
-    .dataset-col label {
-      font-size: 18px;
+    .panel-header:hover {
+      background: rgba(248, 249, 250, 1);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .panel-title h3 {
+      margin: 0;
+      font-size: 20px;
       font-weight: 700;
       color: var(--text-primary);
       text-transform: uppercase;
       letter-spacing: 2px;
-      margin: 0;
     }
 
-    .dataset-col .counter {
+    .panel-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .counter-badge {
       background: linear-gradient(45deg, var(--primary-blue), var(--primary-green));
       padding: 5px 15px;
       border-radius: 20px;
@@ -171,9 +166,38 @@
       box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
     }
 
+    .expand-icon {
+      font-size: 20px;
+      color: var(--text-secondary);
+      transition: transform 0.3s ease;
+    }
+
+    .dataset-panel.expanded .expand-icon {
+      transform: rotate(180deg);
+    }
+
+    .panel-body {
+      padding: 20px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .dataset-panel.expanded .panel-body {
+      max-height: 800px;
+    }
+
+    /* Search and Filter */
+    .search-filter-section {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
     .search-box-wrapper {
+      flex: 1;
       position: relative;
-      margin-bottom: 15px;
     }
 
     .search-box-wrapper .input-group-addon {
@@ -191,117 +215,199 @@
       background: rgba(255, 255, 255, 0.9);
       border: 1px solid #dee2e6;
       color: var(--text-primary);
+      font-size: 14px;
     }
 
-    /* List */
-    .dataset-list {
-      height: 400px;
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid #dee2e6;
-      border-radius: 10px;
-      overflow-y: auto;
-      padding: 10px;
-    }
-
-    .dataset-list option {
-      padding: 12px;
-      margin-bottom: 5px;
-      background: rgba(248, 249, 250, 0.8);
-      border: 1px solid transparent;
-      border-radius: 5px;
-      transition: all 0.2s ease;
-      cursor: pointer;
-      color: var(--text-primary);
-    }
-
-    .dataset-list option:hover {
-      background: rgba(0, 123, 255, 0.1);
-      border-color: var(--primary-blue);
-      box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
-      transform: translateX(5px);
-    }
-
-    .dataset-list option:selected {
-      background: rgba(40, 167, 69, 0.2);
-      border-color: var(--primary-green);
-      box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
-    }
-
-    /* Scrollbar */
-    .dataset-list::-webkit-scrollbar {
-      width: 10px;
-    }
-    .dataset-list::-webkit-scrollbar-track {
-      background: rgba(233, 236, 239, 0.5);
-      border-radius: 5px;
-    }
-    .dataset-list::-webkit-scrollbar-thumb {
-      background: linear-gradient(45deg, var(--primary-blue), var(--primary-green));
-      border-radius: 5px;
-    }
-
-    /* Control Buttons */
-    .control-buttons {
+    .filter-buttons {
       display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 20px;
+      gap: 10px;
     }
 
-    .control-buttons .btn {
-      width: 60px;
-      height: 60px;
-      border-radius: 15px;
-      border: 2px solid;
-      font-size: 24px;
+    .filter-btn {
+      padding: 8px 16px;
+      border: 1px solid #dee2e6;
+      background: white;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--primary-blue);
+      background: rgba(0, 123, 255, 0.05);
+    }
+
+    .filter-btn.active {
+      background: var(--primary-blue);
+      color: white;
+      border-color: var(--primary-blue);
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .batch-action-btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
-      justify-content: center;
-      transition: all 0.3s ease;
+      gap: 8px;
+    }
+
+    .batch-action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-select-all {
+      background: var(--primary-blue);
+      color: white;
+    }
+
+    .btn-select-all:hover:not(:disabled) {
+      background: #0056b3;
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+    }
+
+    .btn-clear-selection {
+      background: var(--text-secondary);
+      color: white;
+    }
+
+    .btn-clear-selection:hover:not(:disabled) {
+      background: #5a6268;
+      transform: translateY(-1px);
+    }
+
+    .btn-add-selected {
+      background: var(--primary-green);
+      color: white;
+    }
+
+    .btn-add-selected:hover:not(:disabled) {
+      background: #218838;
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    .btn-remove-selected {
+      background: var(--primary-red);
+      color: white;
+    }
+
+    .btn-remove-selected:hover:not(:disabled) {
+      background: #c82333;
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+    }
+
+    /* Dataset Badge Grid */
+    .dataset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 15px;
+      max-height: 500px;
+      overflow-y: auto;
+      padding: 10px;
+      background: rgba(248, 249, 250, 0.5);
+      border-radius: 10px;
+    }
+
+    .dataset-badge {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.2s ease;
       position: relative;
       overflow: hidden;
     }
 
-    .control-buttons .btn::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 70%);
-      transition: all 0.3s ease;
-      transform: translate(-50%, -50%);
+    .dataset-badge:hover {
+      border-color: var(--primary-blue);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 123, 255, 0.1);
     }
 
-    .control-buttons .btn:hover::before {
-      width: 100px;
-      height: 100px;
+    .dataset-badge.selected {
+      background: linear-gradient(135deg, rgba(0, 123, 255, 0.1) 0%, rgba(40, 167, 69, 0.1) 100%);
+      border-color: var(--primary-blue);
     }
 
-    .btn-success {
-      background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(0, 123, 255, 0.2));
-      border-color: var(--primary-green);
-      color: var(--primary-green);
+    .dataset-checkbox {
+      width: 20px;
+      height: 20px;
+      margin-right: 15px;
+      cursor: pointer;
     }
 
-    .btn-danger {
-      background: linear-gradient(135deg, rgba(220, 53, 69, 0.2), rgba(255, 193, 7, 0.2));
-      border-color: var(--primary-red);
-      color: var(--primary-red);
+    .dataset-info {
+      flex: 1;
+      overflow: hidden;
     }
 
-    .btn-success:hover {
-      box-shadow: 0 0 15px rgba(40, 167, 69, 0.4), inset 0 0 10px rgba(40, 167, 69, 0.2);
-      transform: scale(1.1);
+    .dataset-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .btn-danger:hover {
-      box-shadow: 0 0 15px rgba(220, 53, 69, 0.4), inset 0 0 10px rgba(220, 53, 69, 0.2);
-      transform: scale(1.1);
+    .dataset-meta {
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
     }
 
-    /* Action Buttons */
+    .theme-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      background: rgba(111, 66, 193, 0.1);
+      border: 1px solid var(--primary-purple);
+      border-radius: 10px;
+      font-size: 11px;
+      color: var(--primary-purple);
+      font-weight: 600;
+    }
+
+    .theme-indicator i {
+      font-size: 10px;
+    }
+
+    /* Scrollbar */
+    .dataset-grid::-webkit-scrollbar {
+      width: 10px;
+    }
+    .dataset-grid::-webkit-scrollbar-track {
+      background: rgba(233, 236, 239, 0.5);
+      border-radius: 5px;
+    }
+    .dataset-grid::-webkit-scrollbar-thumb {
+      background: linear-gradient(45deg, var(--primary-blue), var(--primary-green));
+      border-radius: 5px;
+    }
+
+    /* Form Actions */
     .form-actions {
       display: flex;
       gap: 20px;
@@ -415,17 +521,6 @@
       justify-content: center;
     }
 
-    /* Loading Animation */
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
-
-    .loading {
-      animation: pulse 1.5s infinite;
-    }
-
     /* Image preview and clear button styles */
     .background-image-preview-wrapper {
         margin-top: 10px;
@@ -501,7 +596,7 @@
 {% endblock %}
 
 {% block primary_content %}
-<form method="post" id="theme-edit-form" enctype="multipart/form-data"> {# Add enctype for file upload #}
+<form method="post" id="theme-edit-form" enctype="multipart/form-data">
   <div class="module">
     <div class="module-content">
       <h1 class="page-heading">{{ _('Tema Bilgilerini Düzenle') }}</h1>
@@ -536,7 +631,6 @@
         <input type="file" id="background_image_upload" name="background_image_upload" class="form-control">
         <p class="help-block">{{ _('Tema başlığının arkasında görünecek bir görsel yükleyin.') }}</p>
         
-        {# Mevcut görsel varsa önizlemesini göster ve temizle butonu ekle #}
         {% if c.theme_data.category.background_image %}
         <input type="hidden" name="background_image" value="{{ c.theme_data.category.background_image }}">
         <div class="background-image-preview-wrapper" id="current-bg-image-wrapper">
@@ -549,7 +643,7 @@
         {% endif %}
       </div>
 
-      <div class="form-group"> {# YENİ EKLENDİ: Opacity alanı #}
+      <div class="form-group">
         <label for="opacity" class="control-label">{{ _('Arka Plan Görseli Opaklığı') }}</label>
         <div class="range-slider-wrapper">
             <input type="range" id="opacity" name="opacity" class="form-control range-slider" min="0" max="1" step="0.01" value="{{ c.data.opacity or c.theme_data.category.opacity or 1.0 }}">
@@ -566,44 +660,104 @@
       <h2 class="module-heading">{{ _('Veri Seti Matrisi') }}</h2>
       
       <div class="dataset-manager">
-        <div class="dataset-col">
-          <div class="col-header">
-            <label>{{ _('Havuz') }}</label>
-            <span id="available-counter" class="counter"></span>
+        <!-- Available Datasets Panel -->
+        <div class="dataset-panel expanded" id="available-panel">
+          <div class="panel-header" onclick="togglePanel('available-panel')">
+            <div class="panel-title">
+              <h3>{{ _('Havuz') }}</h3>
+              <span id="available-counter" class="counter-badge">0</span>
+            </div>
+            <div class="panel-controls">
+              <i class="fa fa-chevron-down expand-icon"></i>
+            </div>
           </div>
-          <div class="search-box-wrapper">
-            <span class="input-group-addon"><i class="fa fa-search"></i></span>
-            <input type="text" id="search-box" class="form-control search-box" placeholder="{{ _('Veri setlerini filtrele...') }}">
+          <div class="panel-body">
+            <div class="search-filter-section">
+              <div class="search-box-wrapper">
+                <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                <input type="text" id="search-available" class="form-control search-box" placeholder="{{ _('Veri setlerini ara...') }}">
+              </div>
+              <div class="filter-buttons">
+                <button type="button" class="filter-btn active" data-filter="all">{{ _('Tümü') }}</button>
+                <button type="button" class="filter-btn" data-filter="no-theme">{{ _('Temasız') }}</button>
+                <button type="button" class="filter-btn" data-filter="has-theme">{{ _('Temalı') }}</button>
+              </div>
+            </div>
+            <div class="action-buttons">
+              <button type="button" class="batch-action-btn btn-select-all" id="select-all-available">
+                <i class="fa fa-check-square"></i> {{ _('Tümünü Seç') }}
+              </button>
+              <button type="button" class="batch-action-btn btn-clear-selection" id="clear-selection-available">
+                <i class="fa fa-square-o"></i> {{ _('Seçimi Temizle') }}
+              </button>
+              <button type="button" class="batch-action-btn btn-add-selected" id="add-selected" disabled>
+                <i class="fa fa-arrow-right"></i> {{ _('Seçilenleri Ekle') }}
+              </button>
+            </div>
+            <div class="dataset-grid" id="available-datasets">
+              {% set assigned_ids = c.theme_data.datasets|map(attribute='id')|list %}
+              {% for dataset in c.all_datasets %}
+                {% if dataset.id not in assigned_ids %}
+                  <div class="dataset-badge" data-id="{{ dataset.id }}" data-theme="{{ dataset.theme_name if dataset.theme_name else 'none' }}">
+                    <input type="checkbox" class="dataset-checkbox" id="available-{{ dataset.id }}">
+                    <div class="dataset-info">
+                      <div class="dataset-title">{{ dataset.title }}</div>
+                      <div class="dataset-meta">
+                        {% if dataset.theme_name %}
+                          <span class="theme-indicator">
+                            <i class="fa fa-tag"></i> {{ dataset.theme_name }}
+                          </span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
           </div>
-          <select id="available-datasets" multiple class="form-control dataset-list">
-            {% set assigned_ids = c.theme_data.datasets|map(attribute='id')|list %}
-            {% for dataset in c.all_datasets %}
-              {% if dataset.id not in assigned_ids %}
-                <option value="{{ dataset.id }}">{{ dataset.title }}</option>
-              {% endif %}
-            {% endfor %}
-          </select>
         </div>
 
-        <div class="control-buttons">
-          <button type="button" id="btn-add" class="btn btn-success" title="{{ _('Ata') }}">
-            <i class="fa fa-arrow-right"></i>
-          </button>
-          <button type="button" id="btn-remove" class="btn btn-danger" title="{{ _('Ayır') }}">
-            <i class="fa fa-arrow-left"></i>
-          </button>
-        </div>
-
-        <div class="dataset-col">
-          <div class="col-header">
-            <label>{{ _('Temaya Atananlar') }}</label>
-            <span id="assigned-counter" class="counter"></span>
+        <!-- Assigned Datasets Panel -->
+        <div class="dataset-panel expanded" id="assigned-panel">
+          <div class="panel-header" onclick="togglePanel('assigned-panel')">
+            <div class="panel-title">
+              <h3>{{ _('Temaya Atananlar') }}</h3>
+              <span id="assigned-counter" class="counter-badge">0</span>
+            </div>
+            <div class="panel-controls">
+              <i class="fa fa-chevron-down expand-icon"></i>
+            </div>
           </div>
-          <select id="assigned-datasets" name="dataset_ids" multiple class class="form-control dataset-list">
-            {% for dataset in c.theme_data.datasets %}
-              <option value="{{ dataset.id }}">{{ dataset.title }}</option>
-            {% endfor %}
-          </select>
+          <div class="panel-body">
+            <div class="search-filter-section">
+              <div class="search-box-wrapper">
+                <span class="input-group-addon"><i class="fa fa-search"></i></span>
+                <input type="text" id="search-assigned" class="form-control search-box" placeholder="{{ _('Atanmış veri setlerini ara...') }}">
+              </div>
+            </div>
+            <div class="action-buttons">
+              <button type="button" class="batch-action-btn btn-select-all" id="select-all-assigned">
+                <i class="fa fa-check-square"></i> {{ _('Tümünü Seç') }}
+              </button>
+              <button type="button" class="batch-action-btn btn-clear-selection" id="clear-selection-assigned">
+                <i class="fa fa-square-o"></i> {{ _('Seçimi Temizle') }}
+              </button>
+              <button type="button" class="batch-action-btn btn-remove-selected" id="remove-selected" disabled>
+                <i class="fa fa-arrow-left"></i> {{ _('Seçilenleri Kaldır') }}
+              </button>
+            </div>
+            <div class="dataset-grid" id="assigned-datasets">
+              {% for dataset in c.theme_data.datasets %}
+                <div class="dataset-badge" data-id="{{ dataset.id }}">
+                  <input type="checkbox" class="dataset-checkbox" id="assigned-{{ dataset.id }}">
+                  <input type="hidden" name="dataset_ids" value="{{ dataset.id }}">
+                  <div class="dataset-info">
+                    <div class="dataset-title">{{ dataset.title }}</div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -616,7 +770,7 @@
     <a href="{{ h.url_for('temalar_sayfasi.read', slug=c.theme_data.category.slug) }}" class="btn btn-default">
       <i class="fa fa-times"></i> {{ _('İptal') }}
     </a>
-    <button type="button" class="btn btn-delete" style="color:black !important;" onclick="showDeleteModal()">
+    <button type="button" class="btn btn-delete" style="color:white !important;" onclick="showDeleteModal()">
       <i class="fa fa-trash"></i> {{ _('Temayı Sil') }}
     </button>
   </div>
@@ -645,70 +799,286 @@
   {{ super() }}
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      const available = document.getElementById('available-datasets');
-      const assigned = document.getElementById('assigned-datasets');
-      const btnAdd = document.getElementById('btn-add');
-      const btnRemove = document.getElementById('btn-remove');
-      const form = document.getElementById('theme-edit-form');
-      const searchBox = document.getElementById('search-box');
+      // Panel toggle functionality
+      window.togglePanel = function(panelId) {
+        const panel = document.getElementById(panelId);
+        panel.classList.toggle('expanded');
+      };
+
+      // Dataset management variables
+      const availableGrid = document.getElementById('available-datasets');
+      const assignedGrid = document.getElementById('assigned-datasets');
+      const searchAvailable = document.getElementById('search-available');
+      const searchAssigned = document.getElementById('search-assigned');
       const availableCounter = document.getElementById('available-counter');
       const assignedCounter = document.getElementById('assigned-counter');
+      const form = document.getElementById('theme-edit-form');
 
+      // Action buttons
+      const selectAllAvailable = document.getElementById('select-all-available');
+      const clearSelectionAvailable = document.getElementById('clear-selection-available');
+      const selectAllAssigned = document.getElementById('select-all-assigned');
+      const clearSelectionAssigned = document.getElementById('clear-selection-assigned');
+      const addSelectedBtn = document.getElementById('add-selected');
+      const removeSelectedBtn = document.getElementById('remove-selected');
+
+      // Filter buttons
+      const filterButtons = document.querySelectorAll('.filter-btn');
+      let currentFilter = 'all';
+
+      // Update counters
       function updateCounters() {
-        const availableVisibleCount = Array.from(available.options).filter(opt => opt.style.display !== 'none').length;
-        const availableTotalCount = available.options.length;
-        
-        if (searchBox.value) {
-            availableCounter.textContent = `${availableVisibleCount} / ${availableTotalCount}`;
+        const availableBadges = availableGrid.querySelectorAll('.dataset-badge:not([style*="display: none"])');
+        const assignedBadges = assignedGrid.querySelectorAll('.dataset-badge');
+        availableCounter.textContent = availableBadges.length;
+        assignedCounter.textContent = assignedBadges.length;
+      }
+
+      // Toggle badge selection
+      function toggleBadgeSelection(badge, checkbox) {
+        if (checkbox.checked) {
+          badge.classList.add('selected');
         } else {
-            availableCounter.textContent = `${availableTotalCount}`;
+          badge.classList.remove('selected');
         }
+        updateActionButtons();
+      }
+
+      // Update action buttons state
+      function updateActionButtons() {
+        const availableChecked = availableGrid.querySelectorAll('.dataset-checkbox:checked').length;
+        const assignedChecked = assignedGrid.querySelectorAll('.dataset-checkbox:checked').length;
         
-        assignedCounter.textContent = `${assigned.options.length}`;
+        addSelectedBtn.disabled = availableChecked === 0;
+        removeSelectedBtn.disabled = assignedChecked === 0;
       }
 
-      function moveOptions(source, destination) {
-        Array.from(source.selectedOptions).forEach(option => {
-          destination.appendChild(option);
+      // Badge click handlers
+      function setupBadgeHandlers() {
+        document.querySelectorAll('.dataset-badge').forEach(badge => {
+          const checkbox = badge.querySelector('.dataset-checkbox');
+          
+          badge.addEventListener('click', function(e) {
+            if (e.target.type !== 'checkbox') {
+              checkbox.checked = !checkbox.checked;
+              toggleBadgeSelection(badge, checkbox);
+            }
+          });
+
+          checkbox.addEventListener('change', function() {
+            toggleBadgeSelection(badge, checkbox);
+          });
         });
-        updateCounters();
-        searchBox.value = '';
-        searchBox.dispatchEvent(new Event('input'));
       }
 
-      btnAdd.addEventListener('click', () => moveOptions(available, assigned));
-      btnRemove.addEventListener('click', () => moveOptions(assigned, available));
-      
-      searchBox.addEventListener('input', function() {
-        const filter = this.value.toLowerCase();
-        Array.from(available.options).forEach(option => {
-          const text = option.textContent.toLowerCase();
-          option.style.display = text.includes(filter) ? '' : 'none';
+      // Select all functionality
+      selectAllAvailable.addEventListener('click', function() {
+        const visibleBadges = availableGrid.querySelectorAll('.dataset-badge:not([style*="display: none"])');
+        visibleBadges.forEach(badge => {
+          const checkbox = badge.querySelector('.dataset-checkbox');
+          checkbox.checked = true;
+          badge.classList.add('selected');
+        });
+        updateActionButtons();
+      });
+
+      selectAllAssigned.addEventListener('click', function() {
+        assignedGrid.querySelectorAll('.dataset-badge').forEach(badge => {
+          const checkbox = badge.querySelector('.dataset-checkbox');
+          checkbox.checked = true;
+          badge.classList.add('selected');
+        });
+        updateActionButtons();
+      });
+
+      // Clear selection functionality
+      clearSelectionAvailable.addEventListener('click', function() {
+        availableGrid.querySelectorAll('.dataset-badge').forEach(badge => {
+          const checkbox = badge.querySelector('.dataset-checkbox');
+          checkbox.checked = false;
+          badge.classList.remove('selected');
+        });
+        updateActionButtons();
+      });
+
+      clearSelectionAssigned.addEventListener('click', function() {
+        assignedGrid.querySelectorAll('.dataset-badge').forEach(badge => {
+          const checkbox = badge.querySelector('.dataset-checkbox');
+          checkbox.checked = false;
+          badge.classList.remove('selected');
+        });
+        updateActionButtons();
+      });
+
+      // Add selected datasets
+      addSelectedBtn.addEventListener('click', function() {
+        const selectedBadges = availableGrid.querySelectorAll('.dataset-badge.selected');
+        selectedBadges.forEach(badge => {
+          const datasetId = badge.getAttribute('data-id');
+          const datasetTitle = badge.querySelector('.dataset-title').textContent;
+          
+          // Create new badge for assigned section
+          const newBadge = document.createElement('div');
+          newBadge.className = 'dataset-badge';
+          newBadge.setAttribute('data-id', datasetId);
+          newBadge.innerHTML = `
+            <input type="checkbox" class="dataset-checkbox" id="assigned-${datasetId}">
+            <input type="hidden" name="dataset_ids" value="${datasetId}">
+            <div class="dataset-info">
+              <div class="dataset-title">${datasetTitle}</div>
+            </div>
+          `;
+          
+          assignedGrid.appendChild(newBadge);
+          badge.remove();
+        });
+        
+        setupBadgeHandlers();
+        updateCounters();
+        updateActionButtons();
+        applyFilters();
+      });
+
+      // Remove selected datasets
+      removeSelectedBtn.addEventListener('click', function() {
+        const selectedBadges = assignedGrid.querySelectorAll('.dataset-badge.selected');
+        selectedBadges.forEach(badge => {
+          const datasetId = badge.getAttribute('data-id');
+          const datasetTitle = badge.querySelector('.dataset-title').textContent;
+          
+          // Get theme info from original data if available
+          const themeInfo = badge.getAttribute('data-theme') || '';
+          
+          // Create new badge for available section
+          const newBadge = document.createElement('div');
+          newBadge.className = 'dataset-badge';
+          newBadge.setAttribute('data-id', datasetId);
+          newBadge.setAttribute('data-theme', themeInfo);
+          
+          let metaHtml = '';
+          if (themeInfo && themeInfo !== 'none') {
+            metaHtml = `
+              <div class="dataset-meta">
+                <span class="theme-indicator">
+                  <i class="fa fa-tag"></i> ${themeInfo}
+                </span>
+              </div>
+            `;
+          }
+          
+          newBadge.innerHTML = `
+            <input type="checkbox" class="dataset-checkbox" id="available-${datasetId}">
+            <div class="dataset-info">
+              <div class="dataset-title">${datasetTitle}</div>
+              ${metaHtml}
+            </div>
+          `;
+          
+          availableGrid.appendChild(newBadge);
+          badge.remove();
+        });
+        
+        setupBadgeHandlers();
+        updateCounters();
+        updateActionButtons();
+        applyFilters();
+      });
+
+      // Search functionality
+      searchAvailable.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        availableGrid.querySelectorAll('.dataset-badge').forEach(badge => {
+          const title = badge.querySelector('.dataset-title').textContent.toLowerCase();
+          const themeName = badge.querySelector('.theme-indicator')?.textContent.toLowerCase() || '';
+          if (title.includes(searchTerm) || themeName.includes(searchTerm)) {
+            badge.style.display = '';
+          } else {
+            badge.style.display = 'none';
+          }
         });
         updateCounters();
       });
 
-      form.addEventListener('submit', function() {
-        for (let i = 0; i < assigned.options.length; i++) {
-          assigned.options[i].selected = true;
-        }
+      searchAssigned.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        assignedGrid.querySelectorAll('.dataset-badge').forEach(badge => {
+          const title = badge.querySelector('.dataset-title').textContent.toLowerCase();
+          if (title.includes(searchTerm)) {
+            badge.style.display = '';
+          } else {
+            badge.style.display = 'none';
+          }
+        });
       });
 
-      updateCounters();
+      // Filter functionality
+      function applyFilters() {
+        availableGrid.querySelectorAll('.dataset-badge').forEach(badge => {
+          const hasTheme = badge.getAttribute('data-theme') !== 'none';
+          let shouldShow = true;
+          
+          if (currentFilter === 'no-theme' && hasTheme) {
+            shouldShow = false;
+          } else if (currentFilter === 'has-theme' && !hasTheme) {
+            shouldShow = false;
+          }
+          
+          // Also check search term
+          const searchTerm = searchAvailable.value.toLowerCase();
+          if (searchTerm) {
+            const title = badge.querySelector('.dataset-title').textContent.toLowerCase();
+            const themeName = badge.querySelector('.theme-indicator')?.textContent.toLowerCase() || '';
+            if (!title.includes(searchTerm) && !themeName.includes(searchTerm)) {
+              shouldShow = false;
+            }
+          }
+          
+          badge.style.display = shouldShow ? '' : 'none';
+        });
+        updateCounters();
+      }
 
-      // Clear background image functionality for edit_theme.html
+      filterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+          filterButtons.forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          currentFilter = this.getAttribute('data-filter');
+          applyFilters();
+        });
+      });
+
+      // Form submission - ensure all assigned datasets have hidden inputs
+      form.addEventListener('submit', function(e) {
+        // Remove all existing hidden inputs
+        form.querySelectorAll('input[name="dataset_ids"]').forEach(input => {
+          if (input.type === 'hidden') {
+            input.remove();
+          }
+        });
+        
+        // Add hidden inputs for all assigned datasets
+        assignedGrid.querySelectorAll('.dataset-badge').forEach(badge => {
+          const datasetId = badge.getAttribute('data-id');
+          const hiddenInput = document.createElement('input');
+          hiddenInput.type = 'hidden';
+          hiddenInput.name = 'dataset_ids';
+          hiddenInput.value = datasetId;
+          form.appendChild(hiddenInput);
+        });
+      });
+
+      // Clear background image functionality
       const clearImageButton = document.getElementById('clear_background_image');
       const clearImageHiddenInput = document.getElementById('clear_background_image_hidden');
       const currentBgImageWrapper = document.getElementById('current-bg-image-wrapper');
 
       if (clearImageButton && clearImageHiddenInput && currentBgImageWrapper) {
           clearImageButton.addEventListener('click', function() {
-              clearImageHiddenInput.value = 'true'; // Set hidden input to true to signal removal
-              currentBgImageWrapper.style.display = 'none'; // Hide the preview
-              // Optionally, clear the file input if user wants to upload a new one
+              clearImageHiddenInput.value = 'true';
+              currentBgImageWrapper.style.display = 'none';
               const fileInput = document.getElementById('background_image_upload');
               if (fileInput) {
-                  fileInput.value = ''; // Clear selected file
+                  fileInput.value = '';
               }
           });
       }
@@ -718,13 +1088,17 @@
       const opacityValueDisplay = document.getElementById('opacity-value-display');
 
       if (opacitySlider && opacityValueDisplay) {
-          // Initialize display with current value
           opacityValueDisplay.textContent = parseFloat(opacitySlider.value).toFixed(2);
 
           opacitySlider.addEventListener('input', function() {
               opacityValueDisplay.textContent = parseFloat(this.value).toFixed(2);
           });
       }
+
+      // Initialize
+      setupBadgeHandlers();
+      updateCounters();
+      updateActionButtons();
     });
 
     // Delete Modal Functions
