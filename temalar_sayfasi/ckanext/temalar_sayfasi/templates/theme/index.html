@@ -265,9 +265,9 @@ body, html, * {
                             const imageUrl = `/uploads/theme_background/${category.background_image}`;
                             // Arka plan görseli ve tema rengi ile birleştirme (linear-gradient ile opaklık ve renk efekti)
                             backgroundStyle = `background: linear-gradient(${rgbaColor}, ${rgbaColor}), url('${imageUrl}');
-                                               background-size: cover;
-                                               background-position: center;
-                                               background-blend-mode: multiply;`; // Multiply modu renkleri karıştırır
+                                            background-size: cover;
+                                            background-position: center;
+                                            background-blend-mode: multiply;`; // Multiply modu renkleri karıştırır
                         } else {
                             // Arka plan görseli yoksa, sadece tema rengini opaklığı ile kullan
                             backgroundStyle = `background-color: ${rgbaColor};`;
@@ -277,14 +277,21 @@ body, html, * {
 
                         const iconHtml = category.icon ? `<i class="fa fa-${category.icon}"></i>` : '';
 
+                        // Açıklama varsa card-body'yi render et, yoksa etme
+                        let cardBodyHtml = '';
+                        if (category.description) {
+                            cardBodyHtml = `
+                                <div class="card-body">
+                                    <p class="description">${category.description}</p>
+                                </div>
+                            `;
+                        }
+
                         card.innerHTML = `
                             <div class="card-header">
                                 <h3 class="title">${iconHtml} ${category.name || '{% trans %}Başlık mevcut değil{% endtrans %}'}</h3>
                             </div>
-                            <div class="card-body">
-                                <p class="description">${category.description || '{% trans %}Açıklama mevcut değil.{% endtrans %}'}</p>
-                                <p class="meta-info">{% trans %}Son Güncelleme:{% endtrans %} ${formatDate(category.created_at)}</p>
-                            </div>
+                            ${cardBodyHtml}
                             <div class="card-stats">
                                 <div class="stat-item">
                                     <span class="number">${category.dataset_count || 0}</span>
