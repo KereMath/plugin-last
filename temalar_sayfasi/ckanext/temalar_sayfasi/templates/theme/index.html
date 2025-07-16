@@ -248,6 +248,27 @@ body, html, * {
             function renderThemes(categories) {
                 statusEl.style.display = 'none';
 
+                // Tema isimlerine göre istediğimiz sıralamayı tanımlayalım
+                const desiredOrder = [
+                    "Yeşil Veriler",
+                    "Mavi Veriler",
+                    "Turuncu Veriler",
+                    "Genel Görünüm",
+                    "Yatırım ve İş Ortamı Verileri",
+                    "Kent ve Kültür Verileri"
+                ];
+                
+                // Temaları istediğimiz sıraya göre sıralayalım
+                categories.sort((a, b) => {
+                    const indexA = desiredOrder.indexOf(a.name);
+                    const indexB = desiredOrder.indexOf(b.name);
+                    
+                    if (indexA === -1 && indexB === -1) return 0; // İkisi de listede yoksa, mevcut sırayı koru
+                    if (indexA === -1) return 1; // A listede yoksa, B'den sonra gelsin
+                    if (indexB === -1) return -1; // B listede yoksa, A'dan önce gelsin
+                    return indexA - indexB; // Listedeki sıralamaya göre sırala
+                });
+
                 if (categories && categories.length > 0) {
                     gridEl.innerHTML = '';
                     showingThemeCountEl.textContent = categories.length;
@@ -257,27 +278,24 @@ body, html, * {
                         card.className = 'theme-card';
 
                         const effectiveOpacity = typeof category.opacity === 'number' ? category.opacity : 1.0;
-                        const baseColor = category.color || '#6c757d'; // Varsayılan renk
+                        const baseColor = category.color || '#6c757d'; 
                         const rgbaColor = hexToRgba(baseColor, effectiveOpacity);
 
                         let backgroundStyle = '';
                         if (category.background_image) {
                             const imageUrl = `/uploads/theme_background/${category.background_image}`;
-                            // Arka plan görseli ve tema rengi ile birleştirme (linear-gradient ile opaklık ve renk efekti)
                             backgroundStyle = `background: linear-gradient(${rgbaColor}, ${rgbaColor}), url('${imageUrl}');
                                             background-size: cover;
                                             background-position: center;
-                                            background-blend-mode: multiply;`; // Multiply modu renkleri karıştırır
+                                            background-blend-mode: multiply;`; 
                         } else {
-                            // Arka plan görseli yoksa, sadece tema rengini opaklığı ile kullan
                             backgroundStyle = `background-color: ${rgbaColor};`;
                         }
 
-                        card.style.cssText = backgroundStyle; // Derlenmiş arka plan stilini uygula
+                        card.style.cssText = backgroundStyle; 
 
                         const iconHtml = category.icon ? `<i class="fa fa-${category.icon}"></i>` : '';
 
-                        // Açıklama varsa card-body'yi render et, yoksa etme
                         let cardBodyHtml = '';
                         if (category.description) {
                             cardBodyHtml = `
@@ -321,7 +339,7 @@ body, html, * {
             }
 
             if (isDashboardPage) {
-                // Dashboard sayfasında veriler controller'dan gelir
+                // Dashboard sayfasında veriler controller'dan gelir, direkt render etmeden önce sırala
                 renderThemes(themesFromController);
             } else {
                 // Genel tema listesi sayfasında veriler API'den çekilir
@@ -333,7 +351,7 @@ body, html, * {
                     })
                     .then(data => {
                         if (data.success) {
-                            renderThemes(data.result);
+                            renderThemes(data.result); // API'den gelen veriyi sırala ve render et
                         } else {
                             throw new Error(data.error ? data.error.message : '{% trans %}API bilinmeyen bir hata döndürdü.{% endtrans %}');
                         }
