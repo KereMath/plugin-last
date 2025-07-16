@@ -68,6 +68,30 @@
       font-weight: 900;
     }
 
+    /* Loading Spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid var(--primary-blue);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
     /* Form Controls */
     .form-group {
       margin-bottom: 30px;
@@ -349,6 +373,10 @@
       border-color: var(--primary-blue);
     }
 
+    .dataset-badge.loading {
+      opacity: 0.6;
+    }
+
     .dataset-checkbox {
       width: 20px;
       height: 20px;
@@ -392,6 +420,19 @@
 
     .theme-indicator i {
       font-size: 10px;
+    }
+
+    .no-theme-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      background: rgba(108, 117, 125, 0.1);
+      border: 1px solid var(--text-secondary);
+      border-radius: 10px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 600;
     }
 
     /* Scrollbar */
@@ -668,6 +709,10 @@
               <span id="available-counter" class="counter-badge">0</span>
             </div>
             <div class="panel-controls">
+              <div class="loading-text" id="loading-available" style="display: none;">
+                <div class="loading-spinner"></div>
+                <span>{{ _('Tema bilgileri yükleniyor...') }}</span>
+              </div>
               <i class="fa fa-chevron-down expand-icon"></i>
             </div>
           </div>
@@ -698,16 +743,15 @@
               {% set assigned_ids = c.theme_data.datasets|map(attribute='id')|list %}
               {% for dataset in c.all_datasets %}
                 {% if dataset.id not in assigned_ids %}
-                  <div class="dataset-badge" data-id="{{ dataset.id }}" data-theme="{{ dataset.theme_name if dataset.theme_name else 'none' }}">
+                  <div class="dataset-badge loading" data-id="{{ dataset.id }}">
                     <input type="checkbox" class="dataset-checkbox" id="available-{{ dataset.id }}">
                     <div class="dataset-info">
                       <div class="dataset-title">{{ dataset.title }}</div>
                       <div class="dataset-meta">
-                        {% if dataset.theme_name %}
-                          <span class="theme-indicator">
-                            <i class="fa fa-tag"></i> {{ dataset.theme_name }}
-                          </span>
-                        {% endif %}
+                        <div class="loading-text">
+                          <div class="loading-spinner"></div>
+                          <span>{{ _('Yükleniyor...') }}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -813,6 +857,7 @@
       const availableCounter = document.getElementById('available-counter');
       const assignedCounter = document.getElementById('assigned-counter');
       const form = document.getElementById('theme-edit-form');
+      const loadingAvailable = document.getElementById('loading-available');
 
       // Action buttons
       const selectAllAvailable = document.getElementById('select-all-available');
@@ -825,6 +870,98 @@
       // Filter buttons
       const filterButtons = document.querySelectorAll('.filter-btn');
       let currentFilter = 'all';
+
+      // Dataset theme cache
+      const datasetThemes = new Map();
+      let themesLoading = false;
+
+      // API function to get dataset theme
+      async function getDatasetTheme(datasetId) {
+        if (datasetThemes.has(datasetId)) {
+          return datasetThemes.get(datasetId);
+        }
+
+        try {
+          const response = await fetch(`/api/3/action/get_dataset_theme?dataset_id=${datasetId}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          
+          if (data.success && data.result) {
+            const themeInfo = {
+              id: data.result.id,
+              name: data.result.name,
+              slug: data.result.slug,
+              color: data.result.color
+            };
+            datasetThemes.set(datasetId, themeInfo);
+            return themeInfo;
+          } else {
+            datasetThemes.set(datasetId, null);
+            return null;
+          }
+        } catch (error) {
+          console.error('Error fetching dataset theme:', error);
+          datasetThemes.set(datasetId, null);
+          return null;
+        }
+      }
+
+      // Load all dataset themes
+      async function loadAllDatasetThemes() {
+        if (themesLoading) return;
+        themesLoading = true;
+        
+        loadingAvailable.style.display = 'flex';
+        
+        const availableBadges = availableGrid.querySelectorAll('.dataset-badge');
+        const promises = Array.from(availableBadges).map(async (badge) => {
+          const datasetId = badge.getAttribute('data-id');
+          const themeInfo = await getDatasetTheme(datasetId);
+          
+          // Update badge UI
+          const metaDiv = badge.querySelector('.dataset-meta');
+          badge.classList.remove('loading');
+          
+          if (themeInfo) {
+            badge.setAttribute('data-theme', 'has-theme');
+            badge.setAttribute('data-theme-name', themeInfo.name);
+            badge.setAttribute('data-theme-slug', themeInfo.slug);
+            
+            metaDiv.innerHTML = `
+              <span class="theme-indicator">
+                <i class="fa fa-tag"></i> ${themeInfo.name}
+              </span>
+            `;
+          } else {
+            badge.setAttribute('data-theme', 'no-theme');
+            badge.setAttribute('data-theme-name', '');
+            badge.setAttribute('data-theme-slug', '');
+            
+            metaDiv.innerHTML = `
+              <span class="no-theme-indicator">
+                <i class="fa fa-circle-o"></i> {{ _('Temasız') }}
+              </span>
+            `;
+          }
+        });
+
+        await Promise.all(promises);
+        
+        loadingAvailable.style.display = 'none';
+        themesLoading = false;
+        
+        // Apply current filter after loading
+        applyFilters();
+      }
 
       // Update counters
       function updateCounters() {
@@ -855,6 +992,14 @@
 
       // Badge click handlers
       function setupBadgeHandlers() {
+        document.querySelectorAll('.dataset-badge').forEach(badge => {
+          const checkbox = badge.querySelector('.dataset-checkbox');
+          
+          // Remove existing event listeners
+          badge.replaceWith(badge.cloneNode(true));
+        });
+
+        // Re-add event listeners
         document.querySelectorAll('.dataset-badge').forEach(badge => {
           const checkbox = badge.querySelector('.dataset-checkbox');
           
@@ -946,42 +1091,60 @@
           const datasetId = badge.getAttribute('data-id');
           const datasetTitle = badge.querySelector('.dataset-title').textContent;
           
-          // Get theme info from original data if available
-          const themeInfo = badge.getAttribute('data-theme') || '';
-          
-          // Create new badge for available section
+          // Create new badge for available section - will be updated by theme loading
           const newBadge = document.createElement('div');
-          newBadge.className = 'dataset-badge';
+          newBadge.className = 'dataset-badge loading';
           newBadge.setAttribute('data-id', datasetId);
-          newBadge.setAttribute('data-theme', themeInfo);
-          
-          let metaHtml = '';
-          if (themeInfo && themeInfo !== 'none') {
-            metaHtml = `
-              <div class="dataset-meta">
-                <span class="theme-indicator">
-                  <i class="fa fa-tag"></i> ${themeInfo}
-                </span>
-              </div>
-            `;
-          }
-          
           newBadge.innerHTML = `
             <input type="checkbox" class="dataset-checkbox" id="available-${datasetId}">
             <div class="dataset-info">
               <div class="dataset-title">${datasetTitle}</div>
-              ${metaHtml}
+              <div class="dataset-meta">
+                <div class="loading-text">
+                  <div class="loading-spinner"></div>
+                  <span>{{ _('Yükleniyor...') }}</span>
+                </div>
+              </div>
             </div>
           `;
           
           availableGrid.appendChild(newBadge);
           badge.remove();
+          
+          // Load theme for this dataset
+          getDatasetTheme(datasetId).then(themeInfo => {
+            const metaDiv = newBadge.querySelector('.dataset-meta');
+            newBadge.classList.remove('loading');
+            
+            if (themeInfo) {
+              newBadge.setAttribute('data-theme', 'has-theme');
+              newBadge.setAttribute('data-theme-name', themeInfo.name);
+              newBadge.setAttribute('data-theme-slug', themeInfo.slug);
+              
+              metaDiv.innerHTML = `
+                <span class="theme-indicator">
+                  <i class="fa fa-tag"></i> ${themeInfo.name}
+                </span>
+              `;
+            } else {
+              newBadge.setAttribute('data-theme', 'no-theme');
+              newBadge.setAttribute('data-theme-name', '');
+              newBadge.setAttribute('data-theme-slug', '');
+              
+              metaDiv.innerHTML = `
+                <span class="no-theme-indicator">
+                  <i class="fa fa-circle-o"></i> {{ _('Temasız') }}
+                </span>
+              `;
+            }
+            
+            applyFilters();
+          });
         });
         
         setupBadgeHandlers();
         updateCounters();
         updateActionButtons();
-        applyFilters();
       });
 
       // Search functionality
@@ -989,7 +1152,7 @@
         const searchTerm = this.value.toLowerCase();
         availableGrid.querySelectorAll('.dataset-badge').forEach(badge => {
           const title = badge.querySelector('.dataset-title').textContent.toLowerCase();
-          const themeName = badge.querySelector('.theme-indicator')?.textContent.toLowerCase() || '';
+          const themeName = badge.getAttribute('data-theme-name')?.toLowerCase() || '';
           if (title.includes(searchTerm) || themeName.includes(searchTerm)) {
             badge.style.display = '';
           } else {
@@ -1014,12 +1177,12 @@
       // Filter functionality
       function applyFilters() {
         availableGrid.querySelectorAll('.dataset-badge').forEach(badge => {
-          const hasTheme = badge.getAttribute('data-theme') !== 'none';
+          const themeStatus = badge.getAttribute('data-theme') || 'loading';
           let shouldShow = true;
           
-          if (currentFilter === 'no-theme' && hasTheme) {
+          if (currentFilter === 'no-theme' && themeStatus !== 'no-theme') {
             shouldShow = false;
-          } else if (currentFilter === 'has-theme' && !hasTheme) {
+          } else if (currentFilter === 'has-theme' && themeStatus !== 'has-theme') {
             shouldShow = false;
           }
           
@@ -1027,7 +1190,7 @@
           const searchTerm = searchAvailable.value.toLowerCase();
           if (searchTerm) {
             const title = badge.querySelector('.dataset-title').textContent.toLowerCase();
-            const themeName = badge.querySelector('.theme-indicator')?.textContent.toLowerCase() || '';
+            const themeName = badge.getAttribute('data-theme-name')?.toLowerCase() || '';
             if (!title.includes(searchTerm) && !themeName.includes(searchTerm)) {
               shouldShow = false;
             }
@@ -1099,6 +1262,9 @@
       setupBadgeHandlers();
       updateCounters();
       updateActionButtons();
+      
+      // Load all dataset themes on page load
+      loadAllDatasetThemes();
     });
 
     // Delete Modal Functions
