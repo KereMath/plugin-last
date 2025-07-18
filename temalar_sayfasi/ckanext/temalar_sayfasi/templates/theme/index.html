@@ -332,22 +332,22 @@ body, html, * {
                         });
 
                         if (category.background_image) {
-                            // Arka plan görsel varsa
+                            // Arka plan görsel varsa - opacity sadece foto için geçerli
                             const imageUrl = `/uploads/theme_background/${category.background_image}`;
                             const rgbaOverlay = hexToRgba(baseColor, effectiveOpacity);
                             
-                            console.log(`  - RGBA overlay: ${rgbaOverlay}`);
+                            console.log(`  - RGBA overlay (foto üzerinde): ${rgbaOverlay}`);
                             
-                            // Background image + color overlay tek seferde
+                            // Background image + color overlay (opacity'li)
                             card.style.background = `linear-gradient(${rgbaOverlay}, ${rgbaOverlay}), url('${imageUrl}')`;
                             card.style.backgroundSize = 'cover';
                             card.style.backgroundPosition = 'center';
                             card.style.backgroundBlendMode = 'multiply';
                         } else {
-                            // Arka plan görsel yoksa sadece renk + opacity
-                            const rgbaColor = hexToRgba(baseColor, effectiveOpacity);
-                            console.log(`  - Background color: ${rgbaColor}`);
-                            card.style.backgroundColor = rgbaColor;
+                            // Arka plan görsel yoksa - sadece renk (TAM OPAK, opacity yok sayılır)
+                            const rgbColor = hexToRgba(baseColor, 1.0); // Her zaman 1.0 opacity
+                            console.log(`  - Background color (tam opak): ${rgbColor}`);
+                            card.style.backgroundColor = rgbColor;
                         }
 
                         const iconHtml = category.icon ? `<i class="fa fa-${category.icon}"></i>` : '';
