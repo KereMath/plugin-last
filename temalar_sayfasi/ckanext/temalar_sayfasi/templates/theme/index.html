@@ -338,11 +338,11 @@ body, html, * {
                             
                             console.log(`  - RGBA overlay (foto üzerinde): ${rgbaOverlay}`);
                             
-                            // Background image + color overlay (opacity'li)
+                            // Background image + color overlay (blend mode kaldırıldı)
                             card.style.background = `linear-gradient(${rgbaOverlay}, ${rgbaOverlay}), url('${imageUrl}')`;
                             card.style.backgroundSize = 'cover';
                             card.style.backgroundPosition = 'center';
-                            card.style.backgroundBlendMode = 'multiply';
+                            // card.style.backgroundBlendMode = 'multiply'; // Kaldırıldı
                         } else {
                             // Arka plan görsel yoksa - sadece renk (TAM OPAK, opacity yok sayılır)
                             const rgbColor = hexToRgba(baseColor, 1.0); // Her zaman 1.0 opacity
