@@ -135,25 +135,6 @@ body, html, * {
     box-shadow: 0 8px 20px rgba(0,0,0,0.2);
 }
 
-/* Arka plan overlay'i - opacity kontrolü için */
-.theme-card.has-background-image::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1;
-    border-radius: 16px;
-    background-color: var(--overlay-bg);
-}
-
-/* Kart içeriğini overlay'in üstüne çıkar */
-.theme-card > * {
-    position: relative;
-    z-index: 2;
-}
-
 /* Kart içeriği */
 .card-header .title {
     font-size: 14px !important;
@@ -303,18 +284,15 @@ body, html, * {
                         const baseColor = category.color || '#6c757d';
 
                         if (category.background_image) {
-                            // Arka plan görsel varsa
+                            // Arka plan görsel varsa - background-blend-mode kullan
                             const imageUrl = `/uploads/theme_background/${category.background_image}`;
+                            const rgbaOverlay = hexToRgba(baseColor, effectiveOpacity);
                             
-                            // Ana kart için background image
-                            card.style.backgroundImage = `url('${imageUrl}')`;
+                            // Background image + color overlay tek seferde
+                            card.style.background = `linear-gradient(${rgbaOverlay}, ${rgbaOverlay}), url('${imageUrl}')`;
                             card.style.backgroundSize = 'cover';
                             card.style.backgroundPosition = 'center';
-                            
-                            // Overlay için renk + opacity (::before ile)
-                            const rgbaOverlay = hexToRgba(baseColor, effectiveOpacity);
-                            card.style.setProperty('--overlay-bg', rgbaOverlay);
-                            card.classList.add('has-background-image');
+                            card.style.backgroundBlendMode = 'multiply';
                         } else {
                             // Arka plan görsel yoksa sadece renk
                             const rgbaColor = hexToRgba(baseColor, effectiveOpacity);
