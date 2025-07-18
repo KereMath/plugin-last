@@ -668,22 +668,28 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="background_image_upload" class="control-label">{{ _('Arka Plan Görseli Yükle') }}</label>
-        <input type="file" id="background_image_upload" name="background_image_upload" class="form-control">
-        <p class="help-block">{{ _('Tema başlığının arkasında görünecek bir görsel yükleyin.') }}</p>
-        
-        {% if c.theme_data.category.background_image %}
-        <input type="hidden" name="background_image" value="{{ c.theme_data.category.background_image }}">
-        <div class="background-image-preview-wrapper" id="current-bg-image-wrapper">
-          <img src="/uploads/theme_background/{{ c.theme_data.category.background_image }}" alt="{{ _('Mevcut Arka Plan Görseli') }}" class="background-image-preview">
-            <button type="button" class="btn btn-clear-image" id="clear_background_image">
-                <i class="fa fa-times-circle"></i> {{ _('Görseli Kaldır') }}
-            </button>
-            <input type="hidden" name="clear_background_image" id="clear_background_image_hidden" value="false">
-        </div>
-        {% endif %}
-      </div>
+      <!-- Background Image Upload Section - FIXED VERSION -->
+<div class="form-group">
+  <label for="background_image_upload" class="control-label">{{ _('Arka Plan Görseli Yükle') }}</label>
+  <input type="file" id="background_image_upload" name="background_image_upload" class="form-control">
+  <p class="help-block">{{ _('Tema başlığının arkasında görünecek bir görsel yükleyin.') }}</p>
+  
+  <!-- CRITICAL FIX: Always include hidden field for existing image -->
+  <input type="hidden" name="background_image" id="background_image_hidden" value="{{ c.data.background_image or c.theme_data.category.background_image or '' }}">
+  
+  {% if c.theme_data.category.background_image %}
+  <div class="background-image-preview-wrapper" id="current-bg-image-wrapper">
+    <img src="/uploads/theme_background/{{ c.theme_data.category.background_image }}" alt="{{ _('Mevcut Arka Plan Görseli') }}" class="background-image-preview">
+      <button type="button" class="btn btn-clear-image" id="clear_background_image">
+          <i class="fa fa-times-circle"></i> {{ _('Görseli Kaldır') }}
+      </button>
+      <input type="hidden" name="clear_background_image" id="clear_background_image_hidden" value="false">
+  </div>
+  {% else %}
+  <!-- If no existing image, still include the clear field -->
+  <input type="hidden" name="clear_background_image" id="clear_background_image_hidden" value="false">
+  {% endif %}
+</div>
 
       <div class="form-group">
         <label for="opacity" class="control-label">{{ _('Arka Plan Görseli Opaklığı') }}</label>
