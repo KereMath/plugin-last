@@ -219,26 +219,37 @@ body, html, * {
             const gridEl = document.getElementById('theme-grid');
             const showingThemeCountEl = document.getElementById('showing-theme-count');
 
-            // Yardımcı fonksiyon: Hex renk kodunu RGBA'ya çevirir
+            // FIXED: Yardımcı fonksiyon - Hex renk kodunu RGBA'ya çevirir
             function hexToRgba(hex, alpha) {
                 let r = 0, g = 0, b = 0;
-                // #RGB formatını işler
-                if (hex && hex.length === 4) {
-                    r = parseInt(hex[1] + hex[1], 16);
-                    g = parseInt(hex[2] + hex[2], 16);
-                    b = parseInt(hex[3] + hex[3], 16);
+                
+                // Hex kontrolü ve temizleme
+                if (!hex || typeof hex !== 'string') {
+                    return `rgba(108, 117, 125, ${alpha})`; // Fallback
                 }
-                // #RRGGBB formatını işler
-                else if (hex && hex.length === 7) {
-                    r = parseInt(hex.substring(1, 3), 16);
-                    g = parseInt(hex.substring(3, 5), 16);
-                    b = parseInt(hex.substring(5, 7), 16);
+                
+                hex = hex.replace('#', '');
+                
+                // #RGB formatını işle (3 karakter)
+                if (hex.length === 3) {
+                    r = parseInt(hex[0] + hex[0], 16);
+                    g = parseInt(hex[1] + hex[1], 16);
+                    b = parseInt(hex[2] + hex[2], 16);
                 }
-                // Geçersiz hex veya rengin hex olmaması durumunda varsayılan gri döner
+                // #RRGGBB formatını işle (6 karakter)
+                else if (hex.length === 6) {
+                    r = parseInt(hex.substring(0, 2), 16);
+                    g = parseInt(hex.substring(2, 4), 16);
+                    b = parseInt(hex.substring(4, 6), 16);
+                }
+                
+                // Geçersiz değerler için fallback
                 if (isNaN(r) || isNaN(g) || isNaN(b)) {
-                    return `rgba(108, 117, 125, ${alpha})`; // Fallback to default gray with opacity
+                    console.warn('Invalid hex color:', hex);
+                    return `rgba(108, 117, 125, ${alpha})`;
                 }
-                return `rgba(${r},${g},${b},${alpha})`;
+                
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
             }
 
             function formatDate(dateString) {
@@ -265,28 +276,45 @@ body, html, * {
                     const indexA = desiredOrder.indexOf(a.name);
                     const indexB = desiredOrder.indexOf(b.name);
                     
-                    if (indexA === -1 && indexB === -1) return 0; // İkisi de listede yoksa, mevcut sırayı koru
-                    if (indexA === -1) return 1; // A listede yoksa, B'den sonra gelsin
-                    if (indexB === -1) return -1; // B listede yoksa, A'dan önce gelsin
-                    return indexA - indexB; // Listedeki sıralamaya göre sırala
+                    if (indexA === -1 && indexB === -1) return 0;
+                    if (indexA === -1) return 1;
+                    if (indexB === -1) return -1;
+                    return indexA - indexB;
                 });
 
                 if (categories && categories.length > 0) {
                     gridEl.innerHTML = '';
                     showingThemeCountEl.textContent = categories.length;
 
-                    categories.forEach(category => {
+                    categories.forEach((category, index) => {
                         const card = document.createElement('div');
                         card.className = 'theme-card';
 
-                        // Opacity değerini al - varsayılan 1.0
-                        const effectiveOpacity = typeof category.opacity === 'number' ? category.opacity : 1.0;
+                        // FIXED: Opacity değerini doğru şekilde al
+                        let effectiveOpacity = 1.0; // Varsayılan değer
+                        
+                        if (category.opacity !== undefined && category.opacity !== null) {
+                            effectiveOpacity = parseFloat(category.opacity);
+                            // Geçersiz değerleri kontrol et
+                            if (isNaN(effectiveOpacity) || effectiveOpacity < 0 || effectiveOpacity > 1) {
+                                effectiveOpacity = 1.0;
+                            }
+                        }
+                        
                         const baseColor = category.color || '#6c757d';
+                        
+                        console.log(`Tema ${index + 1} (${category.name}):`, {
+                            color: baseColor,
+                            opacity: effectiveOpacity,
+                            background_image: category.background_image
+                        });
 
                         if (category.background_image) {
-                            // Arka plan görsel varsa - background-blend-mode kullan
+                            // FIXED: Arka plan görsel varsa - proper rgba ile opacity
                             const imageUrl = `/uploads/theme_background/${category.background_image}`;
                             const rgbaOverlay = hexToRgba(baseColor, effectiveOpacity);
+                            
+                            console.log(`  - RGBA overlay: ${rgbaOverlay}`);
                             
                             // Background image + color overlay tek seferde
                             card.style.background = `linear-gradient(${rgbaOverlay}, ${rgbaOverlay}), url('${imageUrl}')`;
@@ -294,8 +322,9 @@ body, html, * {
                             card.style.backgroundPosition = 'center';
                             card.style.backgroundBlendMode = 'multiply';
                         } else {
-                            // Arka plan görsel yoksa sadece renk
+                            // FIXED: Arka plan görsel yoksa sadece renk + opacity
                             const rgbaColor = hexToRgba(baseColor, effectiveOpacity);
+                            console.log(`  - Background color: ${rgbaColor}`);
                             card.style.backgroundColor = rgbaColor;
                         }
 
@@ -344,10 +373,8 @@ body, html, * {
             }
 
             if (isDashboardPage) {
-                // Dashboard sayfasında veriler controller'dan gelir, direkt render etmeden önce sırala
                 renderThemes(themesFromController);
             } else {
-                // Genel tema listesi sayfasında veriler API'den çekilir
                 const apiUrl = '/api/3/action/theme_category_list';
                 fetch(apiUrl)
                     .then(response => {
@@ -356,7 +383,7 @@ body, html, * {
                     })
                     .then(data => {
                         if (data.success) {
-                            renderThemes(data.result); // API'den gelen veriyi sırala ve render et
+                            renderThemes(data.result);
                         } else {
                             throw new Error(data.error ? data.error.message : '{% trans %}API bilinmeyen bir hata döndürdü.{% endtrans %}');
                         }
