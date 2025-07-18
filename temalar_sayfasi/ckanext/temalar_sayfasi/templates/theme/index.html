@@ -290,27 +290,49 @@ body, html, * {
                         const card = document.createElement('div');
                         card.className = 'theme-card';
 
-                        // FIXED: Opacity değerini doğru şekilde al
+                        // ADVANCED DEBUG: Tüm category verilerini logla
+                        console.log(`=== TEMA ${index + 1} DEBUG ===`);
+                        console.log('Full category object:', category);
+                        console.log('category.opacity type:', typeof category.opacity);
+                        console.log('category.opacity value:', category.opacity);
+                        console.log('category.opacity === null:', category.opacity === null);
+                        console.log('category.opacity === undefined:', category.opacity === undefined);
+
+                        // FIXED: Opacity değerini çok dikkatli şekilde al
                         let effectiveOpacity = 1.0; // Varsayılan değer
                         
-                        if (category.opacity !== undefined && category.opacity !== null) {
-                            effectiveOpacity = parseFloat(category.opacity);
-                            // Geçersiz değerleri kontrol et
+                        // Önce raw değeri kontrol et
+                        if ('opacity' in category && category.opacity !== null && category.opacity !== undefined) {
+                            const rawOpacity = category.opacity;
+                            console.log('Raw opacity found:', rawOpacity);
+                            
+                            if (typeof rawOpacity === 'number') {
+                                effectiveOpacity = rawOpacity;
+                                console.log('Used number directly:', effectiveOpacity);
+                            } else if (typeof rawOpacity === 'string') {
+                                effectiveOpacity = parseFloat(rawOpacity);
+                                console.log('Parsed from string:', effectiveOpacity);
+                            }
+                            
+                            // Sınır kontrolü
                             if (isNaN(effectiveOpacity) || effectiveOpacity < 0 || effectiveOpacity > 1) {
+                                console.warn('Invalid opacity value, using default 1.0:', effectiveOpacity);
                                 effectiveOpacity = 1.0;
                             }
+                        } else {
+                            console.log('No opacity found, using default 1.0');
                         }
                         
                         const baseColor = category.color || '#6c757d';
                         
-                        console.log(`Tema ${index + 1} (${category.name}):`, {
+                        console.log(`Final values:`, {
                             color: baseColor,
                             opacity: effectiveOpacity,
                             background_image: category.background_image
                         });
 
                         if (category.background_image) {
-                            // FIXED: Arka plan görsel varsa - proper rgba ile opacity
+                            // Arka plan görsel varsa
                             const imageUrl = `/uploads/theme_background/${category.background_image}`;
                             const rgbaOverlay = hexToRgba(baseColor, effectiveOpacity);
                             
@@ -322,7 +344,7 @@ body, html, * {
                             card.style.backgroundPosition = 'center';
                             card.style.backgroundBlendMode = 'multiply';
                         } else {
-                            // FIXED: Arka plan görsel yoksa sadece renk + opacity
+                            // Arka plan görsel yoksa sadece renk + opacity
                             const rgbaColor = hexToRgba(baseColor, effectiveOpacity);
                             console.log(`  - Background color: ${rgbaColor}`);
                             card.style.backgroundColor = rgbaColor;
@@ -355,6 +377,8 @@ body, html, * {
                             </div>
                         `;
                         gridEl.appendChild(card);
+                        
+                        console.log(`=== TEMA ${index + 1} DEBUG END ===\n`);
                     });
                 } else {
                     gridEl.innerHTML = `
