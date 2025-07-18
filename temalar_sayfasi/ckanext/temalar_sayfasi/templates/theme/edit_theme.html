@@ -1233,20 +1233,42 @@
 
       // Clear background image functionality
       const clearImageButton = document.getElementById('clear_background_image');
-      const clearImageHiddenInput = document.getElementById('clear_background_image_hidden');
-      const currentBgImageWrapper = document.getElementById('current-bg-image-wrapper');
+const clearImageHiddenInput = document.getElementById('clear_background_image_hidden');
+const currentBgImageWrapper = document.getElementById('current-bg-image-wrapper');
+const backgroundImageHidden = document.getElementById('background_image_hidden');
 
-      if (clearImageButton && clearImageHiddenInput && currentBgImageWrapper) {
-          clearImageButton.addEventListener('click', function() {
-              clearImageHiddenInput.value = 'true';
-              currentBgImageWrapper.style.display = 'none';
-              const fileInput = document.getElementById('background_image_upload');
-              if (fileInput) {
-                  fileInput.value = '';
-              }
-          });
-      }
+if (clearImageButton && clearImageHiddenInput && currentBgImageWrapper) {
+    clearImageButton.addEventListener('click', function() {
+        // Mark for clearing
+        clearImageHiddenInput.value = 'true';
+        // Clear the hidden field value to indicate removal
+        if (backgroundImageHidden) {
+            backgroundImageHidden.value = '';
+        }
+        // Hide the preview
+        currentBgImageWrapper.style.display = 'none';
+        // Clear file input
+        const fileInput = document.getElementById('background_image_upload');
+        if (fileInput) {
+            fileInput.value = '';
+        }
+    });
+}
 
+// File input change handler - preserve existing image path if no new file selected
+const fileInput = document.getElementById('background_image_upload');
+if (fileInput) {
+    fileInput.addEventListener('change', function() {
+        // If a new file is selected, we don't need to preserve the old one
+        // The uploader will handle this properly
+        if (this.files && this.files.length > 0) {
+            // Reset clear flag since user is uploading new file
+            if (clearImageHiddenInput) {
+                clearImageHiddenInput.value = 'false';
+            }
+        }
+    });
+}
       // Opacity slider functionality
       const opacitySlider = document.getElementById('opacity');
       const opacityValueDisplay = document.getElementById('opacity-value-display');
