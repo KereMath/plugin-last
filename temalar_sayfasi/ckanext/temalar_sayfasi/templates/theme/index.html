@@ -136,7 +136,7 @@ body, html, * {
 }
 
 /* Arka plan overlay'i - opacity kontrolü için */
-.theme-card::before {
+.theme-card.has-background-image::before {
     content: '';
     position: absolute;
     top: 0;
@@ -145,7 +145,7 @@ body, html, * {
     bottom: 0;
     z-index: 1;
     border-radius: 16px;
-    /* Background overlay will be set dynamically via JavaScript */
+    background-color: var(--overlay-bg);
 }
 
 /* Kart içeriğini overlay'in üstüne çıkar */
@@ -302,45 +302,23 @@ body, html, * {
                         const effectiveOpacity = typeof category.opacity === 'number' ? category.opacity : 1.0;
                         const baseColor = category.color || '#6c757d';
 
-                        let backgroundStyle = '';
-                        let overlayStyle = '';
-
                         if (category.background_image) {
                             // Arka plan görsel varsa
                             const imageUrl = `/uploads/theme_background/${category.background_image}`;
                             
-                            // Ana kart için sadece background image
-                            backgroundStyle = `background-image: url('${imageUrl}'); background-size: cover; background-position: center;`;
+                            // Ana kart için background image
+                            card.style.backgroundImage = `url('${imageUrl}')`;
+                            card.style.backgroundSize = 'cover';
+                            card.style.backgroundPosition = 'center';
                             
-                            // Overlay için renk + opacity
+                            // Overlay için renk + opacity (::before ile)
                             const rgbaOverlay = hexToRgba(baseColor, effectiveOpacity);
-                            overlayStyle = `background-color: ${rgbaOverlay};`;
+                            card.style.setProperty('--overlay-bg', rgbaOverlay);
+                            card.classList.add('has-background-image');
                         } else {
                             // Arka plan görsel yoksa sadece renk
                             const rgbaColor = hexToRgba(baseColor, effectiveOpacity);
-                            backgroundStyle = `background-color: ${rgbaColor};`;
-                            overlayStyle = ''; // Overlay gerekmez
-                        }
-
-                        // Kartın ana background'ını ayarla
-                        card.style.cssText = backgroundStyle;
-
-                        // Overlay'i ayarla (eğer gerekiyorsa)
-                        if (overlayStyle) {
-                            // CSS variable olarak overlay stilini ayarla
-                            card.style.setProperty('--overlay-style', overlayStyle);
-                            
-                            // CSS'te ::before pseudo-element'i güncelle
-                            const styleSheet = document.createElement('style');
-                            styleSheet.textContent = `
-                                .theme-card[data-card-id="${category.id || category.slug}"]::before {
-                                    ${overlayStyle}
-                                }
-                            `;
-                            document.head.appendChild(styleSheet);
-                            
-                            // Kartı tanımlamak için data attribute ekle
-                            card.setAttribute('data-card-id', category.id || category.slug);
+                            card.style.backgroundColor = rgbaColor;
                         }
 
                         const iconHtml = category.icon ? `<i class="fa fa-${category.icon}"></i>` : '';
